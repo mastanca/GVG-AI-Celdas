@@ -1,12 +1,12 @@
 package ar.uba.fi.celdas;
 
-import java.util.ArrayList;
-import java.util.Random;
-
 import core.game.StateObservation;
 import core.player.AbstractPlayer;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
+
+import java.util.ArrayList;
+import java.util.Random;
 
 /**
  * Created with IntelliJ IDEA.
@@ -27,14 +27,14 @@ public class Agent extends AbstractPlayer {
 
 
     protected Theories theories;
-    
+
     /**
      * Public constructor with state observation and time due.
-     * @param so state observation of the current game.
+     *
+     * @param so           state observation of the current game.
      * @param elapsedTimer Timer for the controller creation.
      */
-    public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer)
-    {
+    public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer) {
         randomGenerator = new Random();
         actions = so.getAvailableActions();
     }
@@ -43,17 +43,18 @@ public class Agent extends AbstractPlayer {
     /**
      * Picks an action. This function is called every game step to request an
      * action from the player.
-     * @param stateObs Observation of the current state.
+     *
+     * @param stateObs     Observation of the current state.
      * @param elapsedTimer Timer when the action returned is due.
      * @return An action for the current state
      */
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
-    	
-    	
-    	//TODO: Replace here the content and create an autonomous agent
-    	Perception perception = new Perception(stateObs);
+
+
+        //TODO: Replace here the content and create an autonomous agent
+        Perception perception = new Perception(stateObs);
         System.out.println(perception.toString());
-    	
+
         int index = randomGenerator.nextInt(actions.size());
         return actions.get(index);
     }
