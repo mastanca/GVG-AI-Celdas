@@ -4,12 +4,24 @@ import ontology.Types;
 
 public class Theory implements Comparable<Theory> {
 
-    int usedCount;
-    int successCount;
-    float utility;
+    private int k;
+    private int p;
+    private float utility;
     private char[][] currentState = null;
     private Types.ACTIONS action;
     private char[][] predictedState;
+
+    Theory() {
+    }
+
+    Theory(char[][] currentState, Types.ACTIONS action) {
+        this.currentState = currentState;
+        this.action = action;
+        this.predictedState = null;
+        this.k = 0;
+        this.p = 0;
+        this.utility = 0;
+    }
 
     public char[][] getCurrentState() {
         return currentState;
@@ -35,20 +47,20 @@ public class Theory implements Comparable<Theory> {
         this.predictedState = predictedState;
     }
 
-    public int getUsedCount() {
-        return usedCount;
+    public int getK() {
+        return k;
     }
 
-    public void setUsedCount(int usedCount) {
-        this.usedCount = usedCount;
+    public void setK(int k) {
+        this.k = k;
     }
 
-    public int getSuccessCount() {
-        return successCount;
+    public int getP() {
+        return p;
     }
 
-    public void setSuccessCount(int successCount) {
-        this.successCount = successCount;
+    public void setP(int p) {
+        this.p = p;
     }
 
     public float getUtility() {
@@ -127,8 +139,8 @@ public class Theory implements Comparable<Theory> {
     @Override
     public int compareTo(Theory o) {
         if (this.utility == o.utility) {
-            float sucessThis = (float) this.successCount / this.usedCount;
-            float sucessOther = (float) o.successCount / o.usedCount;
+            float sucessThis = (float) this.p / this.k;
+            float sucessOther = (float) o.p / o.k;
             return Math.round((sucessThis - sucessOther) * 100);
         }
         return Math.round((this.utility - o.utility) * 100);

@@ -6,7 +6,9 @@ import ontology.Types;
 import tools.ElapsedCpuTimer;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * Created with IntelliJ IDEA.
@@ -26,7 +28,8 @@ public class Agent extends AbstractPlayer {
     protected ArrayList<Types.ACTIONS> actions;
 
 
-    protected Theories theories;
+    private Theories theories;
+    private Theory currentTheory;
 
     /**
      * Public constructor with state observation and time due.
@@ -49,14 +52,48 @@ public class Agent extends AbstractPlayer {
      * @return An action for the current state
      */
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
-
-
-        //TODO: Replace here the content and create an autonomous agent
         Perception perception = new Perception(stateObs);
         System.out.println(perception.toString());
 
-        int index = randomGenerator.nextInt(actions.size());
-        return actions.get(index);
+        currentTheory = new Theory();
+        // Get path based on current perception
+        List<Theory> savedTheories = loadTheories(perception);
+        List<Theory> usefulTheories = savedTheories.stream().filter(theory -> theory.getUtility() > 0).collect(Collectors.toList());
+
+        if (!usefulTheories.isEmpty() && !shouldMakeRandomMove() || getPossibleActions(savedTheories).isEmpty()) {
+            // Plan next move
+        } else {
+            buildRandomTheory(savedTheories, perception);
+        }
+
+        return currentTheory.getAction();
+    }
+
+    private void buildRandomTheory(List<Theory> knownTheories, Perception perception) {
+        List<Types.ACTIONS> possibleActions = getPossibleActions(knownTheories);
+        if (possibleActions.size() > 1) {
+            // We have multiple possible actions so we choose 1 randomly
+            currentTheory = new Theory(perception.getLevel(), possibleActions.get(randomGenerator.nextInt(possibleActions.size())));
+        } else {
+            // We only have one possible action
+            currentTheory = new Theory(perception.getLevel(), possibleActions.get(0));
+        }
+    }
+
+    private List<Types.ACTIONS> getPossibleActions(List<Theory> knownTheories) {
+        List<Types.ACTIONS> knowActions = knownTheories.stream().map(Theory::getAction).collect(Collectors.toList());
+        return actions.stream().filter(action -> !knowActions.contains(action)).collect(Collectors.toList());
+    }
+
+    private List<Theory> loadTheories(Perception perception) {
+        Theory theory = new Theory();
+        theory.setCurrentState(perception.getLevel());
+        return theories.getSortedListForCurrentState(theory);
+    }
+
+    private boolean shouldMakeRandomMove() {
+        // 5 possible actions do nothing, move backwards, move forward, move left, move right
+        return randomGenerator.nextInt(actions.size()) > 0;
     }
 
 }
