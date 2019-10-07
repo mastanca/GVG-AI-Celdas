@@ -116,12 +116,14 @@ public class Theory implements Comparable<Theory> {
 
     @Override
     public int hashCode() {
-
         return this.toString().hashCode();
     }
 
-    public int hashCodeOnlyCurrentState() {
+    int hashCodeOnlyCurrentState() {
         return this.charArrayToStr(currentState).hashCode();
+    }
+    int hashCodeOnlyPredictedState() {
+        return this.charArrayToStr(predictedState).hashCode();
     }
 
     @Override
@@ -146,5 +148,8 @@ public class Theory implements Comparable<Theory> {
         return Math.round((this.utility - o.utility) * 100);
     }
 
+    boolean isWinningTheory() {
+        return this.getUtility() > 100;
+    }
 }
 

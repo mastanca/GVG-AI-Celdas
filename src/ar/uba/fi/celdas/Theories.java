@@ -4,23 +4,29 @@ import java.util.*;
 
 public class Theories {
 
-    Map<Integer, List<Theory>> theories;
-    Set<Integer> existenceSet;
+    private Map<Integer, List<Theory>> theoriesForCurrentState;
+    private Map<Integer, List<Theory>> theoriesForPredictedState;
+    private List<Theory> winningTheories;
+    private Set<Integer> existenceSet;
 
     public Theories() {
-        this.theories = new HashMap<Integer, List<Theory>>();
-        this.existenceSet = new HashSet<Integer>();
+        this.theoriesForCurrentState = new HashMap<>();
+        this.theoriesForPredictedState = new HashMap<>();
+        this.winningTheories = new ArrayList<>();
+        this.existenceSet = new HashSet<>();
     }
 
     public void add(Theory theory) throws Exception {
-        if (!existsTheory(theory)) {
-            List<Theory> theoryList = this.theories.get(theory.hashCodeOnlyCurrentState());
-            if (theoryList == null) {
-                theoryList = new ArrayList<Theory>();
-            }
-            theoryList.add(theory);
+        if(!existsTheory(theory)){
+            List<Theory> currentTheories = this.theoriesForCurrentState.computeIfAbsent(theory.hashCodeOnlyCurrentState(), k -> new ArrayList<>());
+            List<Theory> predictedTheories = this.theoriesForPredictedState.computeIfAbsent(theory.hashCodeOnlyPredictedState(), k -> new ArrayList<>());
+            currentTheories.add(theory);
+            predictedTheories.add(theory);
+
+            if (theory.isWinningTheory()) { winningTheories.add(theory);}
+
             this.existenceSet.add(theory.hashCode());
-        } else {
+        }else{
             throw new Exception("Theory already exist!");
         }
     }
@@ -31,9 +37,9 @@ public class Theories {
 
     public List<Theory> getSortedListForCurrentState(Theory theory) {
 
-        List<Theory> theoryList = this.theories.get(theory.hashCodeOnlyCurrentState());
+        List<Theory> theoryList = this.theoriesForCurrentState.get(theory.hashCodeOnlyCurrentState());
         if (theoryList == null) {
-            theoryList = new ArrayList<Theory>();
+            theoryList = new ArrayList<>();
         }
         Collections.sort(theoryList);
         return theoryList;
@@ -47,12 +53,29 @@ public class Theories {
         this.existenceSet = existenceSet;
     }
 
-    public Map<Integer, List<Theory>> getTheories() {
-        return theories;
+    public Map<Integer, List<Theory>> getTheoriesForCurrentState() {
+        return theoriesForCurrentState;
     }
 
-    public void setTheories(Map<Integer, List<Theory>> theories) {
-        this.theories = theories;
+    public void setTheoriesForCurrentState(Map<Integer, List<Theory>> theoriesForCurrentState) {
+        this.theoriesForCurrentState = theoriesForCurrentState;
     }
+
+    public Map<Integer, List<Theory>> getTheoriesForPredictedState() {
+        return theoriesForPredictedState;
+    }
+
+    public void setTheoriesForPredictedState(Map<Integer, List<Theory>> theoriesForPredictedState) {
+        this.theoriesForPredictedState = theoriesForPredictedState;
+    }
+
+    public List<Theory> getWinningTheories() {
+        return winningTheories;
+    }
+
+    public void setWinningTheories(List<Theory> winningTheories) {
+        this.winningTheories = winningTheories;
+    }
+
 
 }

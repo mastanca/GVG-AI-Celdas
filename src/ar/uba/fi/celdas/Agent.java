@@ -55,18 +55,44 @@ public class Agent extends AbstractPlayer {
         Perception perception = new Perception(stateObs);
         System.out.println(perception.toString());
 
+//        if (currentTheory != null) {
+//            theoryUpdater.updateTheoryMidGame(stateObs, currentTheory);
+//            try {
+//                theories.add(currentTheory);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//            if (currentTheory.getUtility() > 0) {
+//                planner.registerTheory(currentTheory);
+//            }
+//        }
+
         currentTheory = new Theory();
         // Get path based on current perception
         List<Theory> savedTheories = loadTheories(perception);
         List<Theory> usefulTheories = savedTheories.stream().filter(theory -> theory.getUtility() > 0).collect(Collectors.toList());
 
         if (!usefulTheories.isEmpty() && !shouldMakeRandomMove() || getPossibleActions(savedTheories).isEmpty()) {
-            // Plan next move
+            planNextMove(usefulTheories);
         } else {
             buildRandomTheory(savedTheories, perception);
         }
 
         return currentTheory.getAction();
+    }
+
+    private void planNextMove(List<Theory> usefulTheories) {
+        for (Theory theory : usefulTheories) {
+            if (theory.isWinningTheory()) {
+                currentTheory = theory;
+                return;
+            }
+        }
+        if (this.theories.get) {
+            currentTheory = planner.planVictory(usefulTheories);
+        } else {
+            currentTheory = planner.selectTheory(usefulTheories);
+        }
     }
 
     private void buildRandomTheory(List<Theory> knownTheories, Perception perception) {
