@@ -77,5 +77,7 @@ public class Theories {
         this.winningTheories = winningTheories;
     }
 
-
+    public boolean victoryIsKnown() {
+        return this.winningTheories.size() > 0;
+    }
 }

@@ -1,10 +1,13 @@
 package ar.uba.fi.celdas;
 
+import com.google.gson.JsonIOException;
 import core.game.StateObservation;
 import core.player.AbstractPlayer;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -30,6 +33,7 @@ public class Agent extends AbstractPlayer {
 
     private Theories theories;
     private Theory currentTheory;
+    private Planner planner;
 
     /**
      * Public constructor with state observation and time due.
@@ -40,6 +44,13 @@ public class Agent extends AbstractPlayer {
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer) {
         randomGenerator = new Random();
         actions = so.getAvailableActions();
+        theories = new Theories();
+        try {
+            theories = TheoryPersistant.load();
+        } catch (JsonIOException | IOException e) {
+            e.printStackTrace();
+        }
+        this.planner = new Planner(theories);
     }
 
 
@@ -54,18 +65,6 @@ public class Agent extends AbstractPlayer {
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         Perception perception = new Perception(stateObs);
         System.out.println(perception.toString());
-
-//        if (currentTheory != null) {
-//            theoryUpdater.updateTheoryMidGame(stateObs, currentTheory);
-//            try {
-//                theories.add(currentTheory);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//            if (currentTheory.getUtility() > 0) {
-//                planner.registerTheory(currentTheory);
-//            }
-//        }
 
         currentTheory = new Theory();
         // Get path based on current perception
@@ -88,10 +87,10 @@ public class Agent extends AbstractPlayer {
                 return;
             }
         }
-        if (this.theories.get) {
-            currentTheory = planner.planVictory(usefulTheories);
+        if (this.theories.victoryIsKnown()) {
+            currentTheory = planner.planVictory(usefulTheories); // TODO: Implement me
         } else {
-            currentTheory = planner.selectTheory(usefulTheories);
+            currentTheory = planner.selectTheory(usefulTheories); // TODO: Implement me
         }
     }
 

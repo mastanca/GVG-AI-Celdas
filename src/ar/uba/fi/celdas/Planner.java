@@ -17,7 +17,7 @@ import java.util.List;
  * SINO
  * Armar plan asociado a camino mínimo de recorrido
  */
-public class Planner {
+class Planner {
     private Theories theories;
     private List<Theory> currentPlan;
 
