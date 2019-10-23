@@ -16,18 +16,18 @@ public class Theories {
         this.existenceSet = new HashSet<>();
     }
 
-    public void add(Theory theory) throws Exception {
-        if(!existsTheory(theory)){
+    public void add(Theory theory) {
+        if (!existsTheory(theory)) {
             List<Theory> currentTheories = this.theoriesForCurrentState.computeIfAbsent(theory.hashCodeOnlyCurrentState(), k -> new ArrayList<>());
             List<Theory> predictedTheories = this.theoriesForPredictedState.computeIfAbsent(theory.hashCodeOnlyPredictedState(), k -> new ArrayList<>());
             currentTheories.add(theory);
             predictedTheories.add(theory);
 
-            if (theory.isWinningTheory()) { winningTheories.add(theory);}
+            if (theory.isWinningTheory()) {
+                winningTheories.add(theory);
+            }
 
             this.existenceSet.add(theory.hashCode());
-        }else{
-            throw new Exception("Theory already exist!");
         }
     }
 
@@ -79,5 +79,14 @@ public class Theories {
 
     public boolean victoryIsKnown() {
         return this.winningTheories.size() > 0;
+    }
+
+    public List<Theory> getSortedListByPredictedState(int state) {
+        List<Theory> theoryList = this.theoriesForPredictedState.get(state);
+        if (theoryList == null) {
+            theoryList = new ArrayList<>();
+        }
+        Collections.sort(theoryList);
+        return theoryList;
     }
 }

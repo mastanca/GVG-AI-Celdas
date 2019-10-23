@@ -122,6 +122,7 @@ public class Theory implements Comparable<Theory> {
     int hashCodeOnlyCurrentState() {
         return this.charArrayToStr(currentState).hashCode();
     }
+
     int hashCodeOnlyPredictedState() {
         return this.charArrayToStr(predictedState).hashCode();
     }
@@ -150,6 +151,37 @@ public class Theory implements Comparable<Theory> {
 
     boolean isWinningTheory() {
         return this.getUtility() > 100;
+    }
+
+    public boolean isUseful() {
+        return (this.utility > 0);
+    }
+
+    public boolean isEqualToCurrentState(char[][] level) {
+        return (charArrayToStr(currentState).hashCode() == charArrayToStr(level).hashCode());
+    }
+
+    public void addUsedCount() {
+        this.k++;
+    }
+
+    public void addSuccessCount() {
+        this.p++;
+    }
+
+    public float getSuccessRate() {
+        return (float) this.p / (float) this.k;
+    }
+
+    public boolean isComplete() {
+        return (currentState != null &&
+                action != null &&
+                predictedState != null
+        );
+    }
+
+    public boolean isEqualToPredictedState(char[][] level) {
+        return (charArrayToStr(predictedState).hashCode() == charArrayToStr(level).hashCode());
     }
 }
 

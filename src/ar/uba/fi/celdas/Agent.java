@@ -6,7 +6,6 @@ import core.player.AbstractPlayer;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +33,7 @@ public class Agent extends AbstractPlayer {
     private Theories theories;
     private Theory currentTheory;
     private Planner planner;
+    private TheoryProcessor theoryProcessor;
 
     /**
      * Public constructor with state observation and time due.
@@ -51,6 +51,7 @@ public class Agent extends AbstractPlayer {
             e.printStackTrace();
         }
         this.planner = new Planner(theories);
+        this.theoryProcessor = new TheoryProcessor();
     }
 
 
@@ -66,10 +67,12 @@ public class Agent extends AbstractPlayer {
         Perception perception = new Perception(stateObs);
         System.out.println(perception.toString());
 
+        this.processCurrentTheory(stateObs);
+
         currentTheory = new Theory();
         // Get path based on current perception
         List<Theory> savedTheories = loadTheories(perception);
-        List<Theory> usefulTheories = savedTheories.stream().filter(theory -> theory.getUtility() > 0).collect(Collectors.toList());
+        List<Theory> usefulTheories = savedTheories.stream().filter(Theory::isUseful).collect(Collectors.toList());
 
         if (!usefulTheories.isEmpty() && !shouldMakeRandomMove() || getPossibleActions(savedTheories).isEmpty()) {
             planNextMove(usefulTheories);
@@ -78,6 +81,18 @@ public class Agent extends AbstractPlayer {
         }
 
         return currentTheory.getAction();
+    }
+
+    private void processCurrentTheory(StateObservation stateObs) {
+        if (currentTheory != null) {
+            this.theoryProcessor.processOngoingTheory(stateObs, currentTheory);
+            if (!theories.existsTheory(currentTheory)) {
+                theories.add(currentTheory);
+            }
+            if (currentTheory.isUseful()) {
+                planner.registerNewTheory(currentTheory);
+            }
+        }
     }
 
     private void planNextMove(List<Theory> usefulTheories) {
@@ -121,4 +136,18 @@ public class Agent extends AbstractPlayer {
         return randomGenerator.nextInt(actions.size()) > 0;
     }
 
+    public void result(StateObservation stateObs, ElapsedCpuTimer elapsedCpuTimer) {
+        boolean gameOver = stateObs.isGameOver();
+        this.theoryProcessor.processLastTheory(stateObs, currentTheory);
+        if (!theories.existsTheory(currentTheory)) {
+            theories.add(currentTheory);
+        }
+        if (gameOver) {
+            try {
+                TheoryPersistant.save(theories);
+            } catch (JsonIOException | IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

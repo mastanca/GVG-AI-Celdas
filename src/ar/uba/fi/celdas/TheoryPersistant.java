@@ -29,8 +29,7 @@ public class TheoryPersistant {
         Type listType = new TypeToken<Theories>() {
         }.getType();
 
-        Theories theories = gson.fromJson(reader, listType); // contains the whole reviews list
-        return theories;
+        return gson.fromJson(reader, listType);
     }
 
 }
