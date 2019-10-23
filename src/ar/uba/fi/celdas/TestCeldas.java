@@ -1,21 +1,21 @@
 package ar.uba.fi.celdas;
-import java.util.Random;
+
 import tracks.ArcadeMachine;
 
+import java.util.Random;
 
-public class TestCeldas
-{
 
-    public static void main(String[] args)
-    {
+public class TestCeldas {
+
+    public static void main(String[] args) {
         //Available controllers:
-    	String celdasAgent = "ar.uba.fi.celdas.Agent";
-    	        
+        String celdasAgent = "ar.uba.fi.celdas.Agent";
+
         //Available games:
         String gamesPath = "examples/gridphysics/";
-        String games[] = new String[]{};
+        String[] games = new String[]{};
         String generateLevelPath = "examples/gridphysics/";
-        
+
         //Other settings
         boolean visuals = true;
         int seed = new Random().nextInt();
@@ -24,15 +24,15 @@ public class TestCeldas
         int gameIdx = 44;
         int levelIdx = 0; //level names from 0 to 4 (game_lvlN.txt).
         String game = gamesPath + "labyrinth" + ".txt";
-       // String level1 = gamesPath + games[gameIdx] + "_lvl" +levelIdx +".txt";
-        String level1 = gamesPath + "labyrinth_lvl_easy_" +levelIdx +".txt";
-        
+        // String level1 = gamesPath + games[gameIdx] + "_lvl" +levelIdx +".txt";
+        String level1 = gamesPath + "labyrinth_lvl_easy_" + levelIdx + ".txt";
+
         String recordLevelFile = generateLevelPath + "labyrinth_glvl.txt";
         String recordActionsFile = null;//"actions_" + games[gameIdx] + "_lvl" + levelIdx + "_" + seed + ".txt"; //where to record the actions executed. null if not to save.
 
         // 1. This starts a game, in a level, played by a human.
-      //  ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
-        
+        //  ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
+
         // 2. This plays a game in a level by the controller.
         ArcadeMachine.runOneGame(game, level1, visuals, celdasAgent, recordActionsFile, seed, 0);
 
@@ -48,13 +48,13 @@ public class TestCeldas
 //        	level1 = gamesPath + games[i] + "_lvl" + levelIdx +".txt";
 //        	ArcadeMachine.runGames(game, new String[]{level1}, M, sampleMCTSController, null);
 //        }
-        
+
         //5. This starts a game, in a generated level created by a specific level generator
 
         //if(ArcadeMachine.generateOneLevel(game, randomLevelGenerator, recordLevelFile)){
         //	ArcadeMachine.playOneGeneratedLevel(game, recordActionsFile, recordLevelFile, seed);
         //}
-        
+
         //6. This plays N games, in the first L levels, M times each. Actions to file optional (set saveActions to true).
 //        int N = 82, L = 5, M = 1;
 //        boolean saveActions = false;
