@@ -19,7 +19,8 @@ public class JavaServer {
     public static void main(String[] args) throws Exception {
         /** Init params */
         int gameIdx = 0;
-        String clientType = "java"; //"python"; // Type of client to test against (Python/Java)
+        //String clientType = "java"; //"python"; // Type of client to test against (Python/Java)
+        String clientType = "python"; // Type of client to test against (Python/Java)
         String shDir = "src/tracks/singleLearning/utils";
         String clientDir = ".";
         String gamesDir = ".";

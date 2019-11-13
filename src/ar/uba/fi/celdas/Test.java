@@ -53,12 +53,12 @@ public class Test {
         int seed = new Random().nextInt();
 
         //Game and level to play
-        int gameIdx = 44;
+        int gameIdx = 80;
         int levelIdx = 0; //level names from 0 to 4 (game_lvlN.txt).
         String game = gamesPath + games[gameIdx] + ".txt";
-        // String level1 = gamesPath + games[gameIdx] + "_lvl" +levelIdx +".txt";
-        String level1 = gamesPath + games[gameIdx] + "_lvl_easy_" + levelIdx + ".txt";
-
+        String level1 = gamesPath + games[gameIdx] + "_lvl" +levelIdx +".txt";
+       // String level1 = gamesPath + games[gameIdx] + "_lvl_easy_" +levelIdx +".txt";
+        
         String recordLevelFile = generateLevelPath + games[gameIdx] + "_glvl.txt";
         String recordActionsFile = null;//"actions_" + games[gameIdx] + "_lvl" + levelIdx + "_" + seed + ".txt"; //where to record the actions executed. null if not to save.
 

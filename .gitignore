@@ -23,7 +23,7 @@ production/
 
 *.ipr
 *.class
-*.xml
+
 *.html
 *.gif
 *.pyc

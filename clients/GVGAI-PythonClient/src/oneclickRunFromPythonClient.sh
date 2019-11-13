@@ -1,8 +1,8 @@
 #!/bin/bash
 
-game_id=0
+game_id=90
 server_dir=../../..
-agent_name=sampleRandom.Agent
+agent_name=celdas.Agent
 sh_dir=utils
 
 
@@ -12,6 +12,6 @@ if [ ! -d "$DIRECTORY" ]; then
 fi
 
 # Run the client with visualisation on
-#python TestLearningClient.py -gameId ${game_id} -agentName ${agent_name} -serverDir ${server_dir} -shDir ${sh_dir} -visuals
+python TestLearningClient.py -gameId ${game_id} -agentName ${agent_name} -serverDir ${server_dir} -shDir ${sh_dir} -visuals
 # Run the client with visualisation off
-python TestLearningClient.py -gameId ${game_id} -agentName ${agent_name} -serverDir ${server_dir} -shDir ${sh_dir}
+#python TestLearningClient.py -gameId ${game_id} -agentName ${agent_name} -serverDir ${server_dir} -shDir ${sh_dir}
