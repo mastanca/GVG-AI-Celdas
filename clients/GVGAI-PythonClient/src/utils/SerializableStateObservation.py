@@ -59,6 +59,9 @@ class SerializableStateObservation:
         image = Image.open(io.BytesIO(bytearray(pixels)))
         image.save(CompetitionParameters.SCREENSHOT_FILENAME)
 
+    def __str__(self):
+        return str(self.__class__) + ": " + str(self.__dict__)
+
 
 class Phase:
     """

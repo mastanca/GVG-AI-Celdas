@@ -21,8 +21,11 @@ class Agent(AbstractPlayer):
     * @param elapsedTimer Timer (1s)
     """
 
-    def init(self, sso, elapsedTimer):    
-        pass
+    def init(self, sso, elapsedTimer):
+        self.lastState = None
+        self.lastPosition = None
+        self.actionIndex = None
+        print("Game initialized")
 
     """
      * Method used to determine the next move to be performed by the agent.
@@ -35,16 +38,38 @@ class Agent(AbstractPlayer):
      * @return The action to be performed by the agent.
      """
 
-    def act(self, sso, elapsedTimer):    	
-        
+    def act(self, sso, elapsedTimer):        
         # pprint(vars(sso))
-        print(self.get_perception(sso))
+        # print(self.get_perception(sso))
+        print(self.getAgentCoordinates(sso))
 
         if sso.gameTick == 1000:
             return "ACTION_ESCAPE"
         else:
             index = random.randint(0, len(sso.availableActions) - 1)
             return sso.availableActions[index]
+    
+    def getAgentCoordinates(self, state):
+        position = state.avatarPosition
+        return [position[0], position[1]]
+
+    def getReward(self, lastState, currentPosition):
+        level = self.get_perception(lastState)
+
+        reward = 0
+        if level[currentPosition[0]][currentPosition[1]] == "." or level[currentPosition[0]][currentPosition[1]] == "A":
+            # If we are in a safe spot or didn't move
+            reward = -1
+        elif level[currentPosition[0]][currentPosition[1]] == "L":
+            # If we got the key
+            reward = 50
+        elif level[currentPosition[0]][currentPosition[1]] == "S":
+            # If we are at the exit
+            reward = 100
+        elif level[currentPosition[0]][currentPosition[1]] == "e":
+            # If we touched an enemy
+            reward = -100
+        return reward
 
     """
     * Method used to perform actions in case of a game end.
@@ -89,11 +114,11 @@ class Agent(AbstractPlayer):
             if o.itype == 3:
                 return '0'
             elif o.itype == 0:
-                return 'w'
+                return 'w' # Wall
             elif o.itype == 4:
-                return 'L'
+                return 'L' # Key
             else:
-                return 'A'
+                return 'A' # Agent
             
              
         elif o.category == 0:
@@ -107,9 +132,9 @@ class Agent(AbstractPlayer):
                 return 'A'
              
         elif o.category == 6:
-            return 'e'
+            return 'e' # Enemy
         elif o.category == 2:
-            return 'S'
+            return 'S' # Exit
         elif o.category == 3:
             if o.itype == 1:
                 return 'e'
@@ -122,4 +147,4 @@ class Agent(AbstractPlayer):
                 return 'e'
         else:                          
             return '?'
-        
+
