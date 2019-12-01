@@ -13,7 +13,8 @@ class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
        
-
+    epsilon = 1
+    epsilonDecreaseRate = 0.001
     """
     * Public method to be called at the start of every level of a game.
     * Perform any level-entry initialization here.
@@ -45,24 +46,31 @@ class Agent(AbstractPlayer):
 
         if self.lastState is not None:
             reward = self.getReward(self.lastState, currentPosition)
-            print("Reward: " + str(reward))
+            # print("Reward: " + str(reward))
         
         action, index = self.getNextAction(sso)
         
         self.lastState = sso
         self.lastPosition = currentPosition
+        if self.epsilon > 0:
+            self.epsilon -= self.epsilonDecreaseRate
         if index is not None:
-            self.lastActionIndex = index 
-        print("Action and index: " + str(action) + " " + str(index))
+            self.lastActionIndex = index
+        # print("Action and index: " + str(action) + " " + str(index))
         return action
     
     def getNextAction(self, sso):
         # Do exploration or exploitation
-        if sso.gameTick == 1000:
-            return "ACTION_ESCAPE", None
-        else:
+        if random.uniform(0, 1) <= self.epsilon:
+            #Exploration
             index = random.randint(0, len(sso.availableActions) - 1)
-            return sso.availableActions[index], index
+            action = sso.availableActions[index]  
+        else:
+            #Exploitation
+            # TODO: get from memory
+            index = random.randint(0, len(sso.availableActions) - 1)
+            action = sso.availableActions[index]  
+        return action, index
 
     def getAvatarCoordinates(self, state):
         position = state.avatarPosition
