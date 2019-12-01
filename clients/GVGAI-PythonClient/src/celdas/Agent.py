@@ -65,12 +65,12 @@ class Agent(AbstractPlayer):
             # TODO: get from memory
             index = random.randint(0, len(sso.availableActions) - 1)
             action = sso.availableActions[index] 
-            print("Exploitation")
+            # print("Exploitation")
         else:
             #Exploration
             index = random.randint(0, len(sso.availableActions) - 1)
             action = sso.availableActions[index]
-            print("Exploration")
+            # print("Exploration")
         return action, index
 
     def getAvatarCoordinates(self, state):
