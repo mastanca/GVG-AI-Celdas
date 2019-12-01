@@ -2,6 +2,7 @@ import random
 
 from AbstractPlayer import AbstractPlayer
 from Types import *
+from EpsilonStrategy import EpsilonStrategy
 
 from utils.Types import LEARNING_SSO_TYPE
 from utils.SerializableStateObservation import Observation
@@ -12,9 +13,9 @@ from pprint import pprint
 class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
+
+    movementStrategy = EpsilonStrategy()
        
-    epsilon = 1
-    epsilonDecreaseRate = 0.001
     """
     * Public method to be called at the start of every level of a game.
     * Perform any level-entry initialization here.
@@ -52,8 +53,6 @@ class Agent(AbstractPlayer):
         
         self.lastState = sso
         self.lastPosition = currentPosition
-        if self.epsilon > 0:
-            self.epsilon -= self.epsilonDecreaseRate
         if index is not None:
             self.lastActionIndex = index
         # print("Action and index: " + str(action) + " " + str(index))
@@ -61,15 +60,17 @@ class Agent(AbstractPlayer):
     
     def getNextAction(self, sso):
         # Do exploration or exploitation
-        if random.uniform(0, 1) <= self.epsilon:
-            #Exploration
-            index = random.randint(0, len(sso.availableActions) - 1)
-            action = sso.availableActions[index]  
-        else:
+        if self.movementStrategy.shouldExploit():
             #Exploitation
             # TODO: get from memory
             index = random.randint(0, len(sso.availableActions) - 1)
-            action = sso.availableActions[index]  
+            action = sso.availableActions[index] 
+            print("Exploitation")
+        else:
+            #Exploration
+            index = random.randint(0, len(sso.availableActions) - 1)
+            action = sso.availableActions[index]
+            print("Exploration")
         return action, index
 
     def getAvatarCoordinates(self, state):
