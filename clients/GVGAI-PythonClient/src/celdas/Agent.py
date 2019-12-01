@@ -2,7 +2,10 @@ import random
 
 from AbstractPlayer import AbstractPlayer
 from Types import *
+
 from EpsilonStrategy import EpsilonStrategy
+from ReplayMemory import ReplayMemory
+from Experience import Experience
 
 from utils.Types import LEARNING_SSO_TYPE
 from utils.SerializableStateObservation import Observation
@@ -10,11 +13,14 @@ import math
 import numpy as np
 from pprint import pprint
 
+MEMORY_CAPACITY = 6
+
 class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
 
     movementStrategy = EpsilonStrategy()
+    replayMemory = ReplayMemory(MEMORY_CAPACITY)
        
     """
     * Public method to be called at the start of every level of a game.
@@ -47,7 +53,7 @@ class Agent(AbstractPlayer):
 
         if self.lastState is not None:
             reward = self.getReward(self.lastState, currentPosition)
-            # print("Reward: " + str(reward))
+            self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, sso, reward))
         
         action, index = self.getNextAction(sso)
         
@@ -62,8 +68,7 @@ class Agent(AbstractPlayer):
         # Do exploration or exploitation
         if self.movementStrategy.shouldExploit():
             #Exploitation
-            # TODO: get from memory
-            index = random.randint(0, len(sso.availableActions) - 1)
+            index = self.replayMemory.sample(1)[0].actionIndex
             action = sso.availableActions[index] 
             # print("Exploitation")
         else:
