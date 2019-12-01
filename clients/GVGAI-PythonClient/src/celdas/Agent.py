@@ -24,7 +24,7 @@ class Agent(AbstractPlayer):
     def init(self, sso, elapsedTimer):
         self.lastState = None
         self.lastPosition = None
-        self.actionIndex = None
+        self.lastActionIndex = None
         print("Game initialized")
 
     """
@@ -41,32 +41,48 @@ class Agent(AbstractPlayer):
     def act(self, sso, elapsedTimer):        
         # pprint(vars(sso))
         # print(self.get_perception(sso))
-        print(self.getAgentCoordinates(sso))
+        currentPosition = self.getAvatarCoordinates(sso)
 
+        if self.lastState is not None:
+            reward = self.getReward(self.lastState, currentPosition)
+            print("Reward: " + str(reward))
+        
+        action, index = self.getNextAction(sso)
+        
+        self.lastState = sso
+        self.lastPosition = currentPosition
+        if index is not None:
+            self.lastActionIndex = index 
+        print("Action and index: " + str(action) + " " + str(index))
+        return action
+    
+    def getNextAction(self, sso):
+        # Do exploration or exploitation
         if sso.gameTick == 1000:
-            return "ACTION_ESCAPE"
+            return "ACTION_ESCAPE", None
         else:
             index = random.randint(0, len(sso.availableActions) - 1)
-            return sso.availableActions[index]
-    
-    def getAgentCoordinates(self, state):
+            return sso.availableActions[index], index
+
+    def getAvatarCoordinates(self, state):
         position = state.avatarPosition
-        return [position[0], position[1]]
+        return [int(position[0]/10), int(position[1]/10)]
 
     def getReward(self, lastState, currentPosition):
         level = self.get_perception(lastState)
-
+        x = currentPosition[1] # col
+        y = currentPosition[0] # row
         reward = 0
-        if level[currentPosition[0]][currentPosition[1]] == "." or level[currentPosition[0]][currentPosition[1]] == "A":
+        if level[x][y] == "." or level[x][y] == "A":
             # If we are in a safe spot or didn't move
             reward = -1
-        elif level[currentPosition[0]][currentPosition[1]] == "L":
+        elif level[x][y] == "L":
             # If we got the key
             reward = 50
-        elif level[currentPosition[0]][currentPosition[1]] == "S":
+        elif level[x][y] == "S":
             # If we are at the exit
             reward = 100
-        elif level[currentPosition[0]][currentPosition[1]] == "e":
+        elif level[x][y] == "e":
             # If we touched an enemy
             reward = -100
         return reward

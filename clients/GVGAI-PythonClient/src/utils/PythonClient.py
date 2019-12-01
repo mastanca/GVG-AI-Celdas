@@ -17,7 +17,10 @@ class PythonClient:
             sys.exit()
         print("start python client")
         ccomm = ClientComm(agentName)
-        ccomm.startComm()
+        try:
+            ccomm.startComm()
+        except Exception as e:
+            sys.exit()
 
 if __name__ == "__main__":
     if len(sys.argv) > 0:
