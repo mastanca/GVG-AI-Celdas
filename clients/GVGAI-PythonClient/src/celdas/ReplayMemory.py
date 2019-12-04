@@ -17,3 +17,7 @@ class ReplayMemory():
 
     def sample(self, batchSize):
         return random.sample(self.memory, batchSize)
+
+    @property
+    def numSamples(self):
+        return len(self.memory)
