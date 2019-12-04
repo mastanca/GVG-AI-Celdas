@@ -5,7 +5,7 @@ from Types import *
 
 from EpsilonStrategy import EpsilonStrategy
 from ReplayMemory import ReplayMemory
-from Experience import Experience
+from Experience import Experienceq
 
 from utils.Types import LEARNING_SSO_TYPE
 from utils.SerializableStateObservation import Observation
@@ -14,6 +14,9 @@ import numpy as np
 from pprint import pprint
 import tensorflow as tf
 from tensorflow import keras
+from tf_agents.environments import tf_py_environment
+
+tf.compat.v1.enable_v2_behavior()
 
 np.random.seed(91218)  # Set np seed for consistent results across runs
 tf.set_random_seed(91218)
@@ -70,7 +73,7 @@ class Agent(AbstractPlayer):
      """
 
     def act(self, sso, elapsedTimer):        
-        # pprint(vars(sso))
+        pprint(vars(sso))
         # print(self.get_perception(sso))
         currentPosition = self.getAvatarCoordinates(sso)
 
@@ -98,10 +101,9 @@ class Agent(AbstractPlayer):
         batch = replayMemory.sample(BATCH_SIZE)
         asd = [np.ravel(self.get_perception(val.state)) for val in batch]
         print(asd)
-        bsd = [ord(i) for i in asd]
         # bsd = [list(i) for i in asd]
         # print(bsd)
-        states = np.array(bsd)
+        states = tf_py_environment.TFPyEnvironment(np.array(asd))
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
         next_states = np.array([(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch])
@@ -153,16 +155,16 @@ class Agent(AbstractPlayer):
         col = currentPosition[1] # col
         row = currentPosition[0] # row
         reward = 0
-        if level[col][row] == "." or level[col][row] == "A":
+        if level[col][row] == 9 or level[col][row] == 3:
             # If we are in a safe spot or didn't move
             reward = -1
-        elif level[col][row] == "L":
+        elif level[col][row] == 2:
             # If we got the key
             reward = 100
-        elif level[col][row] == "S":
+        elif level[col][row] == 6:
             # If we are at the exit
             reward = 50
-        elif level[col][row] == "e":
+        elif level[col][row] == 5:
             # If we touched an enemy
             reward = -100
         return reward
@@ -185,14 +187,14 @@ class Agent(AbstractPlayer):
 
     def get_perception(self, sso):
         sizeWorldWidthInPixels= sso.worldDimension[0]
-        sizeWorldHeightInPixels= sso.worldDimension[1];
-        levelWidth = len(sso.observationGrid);
-        levelHeight = len(sso.observationGrid[0]);
+        sizeWorldHeightInPixels= sso.worldDimension[1]
+        levelWidth = len(sso.observationGrid)
+        levelHeight = len(sso.observationGrid[0])
         
-        spriteSizeWidthInPixels =  sizeWorldWidthInPixels / levelWidth;
-        spriteSizeHeightInPixels =  sizeWorldHeightInPixels/ levelHeight;
-        level = np.chararray((levelHeight, levelWidth))
-        level[:] = '.'
+        spriteSizeWidthInPixels =  sizeWorldWidthInPixels / levelWidth
+        spriteSizeHeightInPixels =  sizeWorldHeightInPixels/ levelHeight
+        level = np.array((levelHeight, levelWidth))
+        level[:] = 9 # blank space
         avatar_observation = Observation()
         for ii in range(levelWidth):                    
             for jj in range(levelHeight):
@@ -208,39 +210,39 @@ class Agent(AbstractPlayer):
     def detectElement(self, o):
         if o.category == 4:
             if o.itype == 3:
-                return '0'
+                return 0
             elif o.itype == 0:
-                return 'w' # Wall
+                return 1 # Wall
             elif o.itype == 4:
-                return 'L' # Key
+                return 2 # Key
             else:
-                return 'A' # Agent
+                return 3 # Agent
             
              
         elif o.category == 0:
             if o.itype == 5:
-                return 'A'
+                return 3
             elif o.itype == 6:
-                return 'B'
+                return 4
             elif o.itype == 1:
-                return 'A'
+                return 3
             else:
-                return 'A'
+                return 3
              
         elif o.category == 6:
-            return 'e' # Enemy
+            return 5 # Enemy
         elif o.category == 2:
-            return 'S' # Exit
+            return 6 # Exit
         elif o.category == 3:
             if o.itype == 1:
-                return 'e'
+                return 5
             else:         
-                return 'e'         
+                return 5         
         elif o.category == 5:
             if o.itype == 5:
-                return 'x'
+                return 7
             else:         
-                return 'e'
+                return 5
         else:                          
-            return '?'
+            return 8
 
