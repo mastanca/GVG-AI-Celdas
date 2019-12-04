@@ -5,7 +5,7 @@ from Types import *
 
 from EpsilonStrategy import EpsilonStrategy
 from ReplayMemory import ReplayMemory
-from Experience import Experienceq
+from Experience import Experience
 
 from utils.Types import LEARNING_SSO_TYPE
 from utils.SerializableStateObservation import Observation
@@ -14,12 +14,11 @@ import numpy as np
 from pprint import pprint
 import tensorflow as tf
 from tensorflow import keras
-from tf_agents.environments import tf_py_environment
 
 tf.compat.v1.enable_v2_behavior()
 
 np.random.seed(91218)  # Set np seed for consistent results across runs
-tf.set_random_seed(91218)
+# tf.set_random_seed(91218)
 
 MEMORY_CAPACITY = 6
 NUM_ACTIONS = 5
@@ -36,11 +35,11 @@ class Agent(AbstractPlayer):
         self.episode = 0
 
         self.policyNetwork = keras.Sequential([
-            keras.layers.Dense(5, input_dim = 4, activation = 'relu'),
+            keras.layers.Dense(5, input_dim = 117, activation = 'relu'),
             keras.layers.Dense(NUM_ACTIONS, activation = 'softmax')
         ])
         self.targetNetwork = keras.Sequential([
-            keras.layers.Dense(5, input_dim=4, activation='relu'),
+            keras.layers.Dense(5, input_dim=117, activation='relu'),
             keras.layers.Dense(NUM_ACTIONS, activation='softmax')
         ])
         self.policyNetwork.compile(optimizer='adam',
@@ -73,7 +72,7 @@ class Agent(AbstractPlayer):
      """
 
     def act(self, sso, elapsedTimer):        
-        pprint(vars(sso))
+        # pprint(vars(sso))
         # print(self.get_perception(sso))
         currentPosition = self.getAvatarCoordinates(sso)
 
@@ -103,10 +102,11 @@ class Agent(AbstractPlayer):
         print(asd)
         # bsd = [list(i) for i in asd]
         # print(bsd)
-        states = tf_py_environment.TFPyEnvironment(np.array(asd))
+        # states = tf_py_environment.TFPyEnvironment(asd)
+        states = tf.convert_to_tensor(asd, dtype=tf.float32)
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
-        next_states = np.array([(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch])
+        next_states = tf.convert_to_tensor(np.array([(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]))
         # predict Q(s,a) given the batch of states
         prim_qt = policyNetwork(states)
         # predict Q(s',a') from the evaluation network
@@ -193,8 +193,8 @@ class Agent(AbstractPlayer):
         
         spriteSizeWidthInPixels =  sizeWorldWidthInPixels / levelWidth
         spriteSizeHeightInPixels =  sizeWorldHeightInPixels/ levelHeight
-        level = np.array((levelHeight, levelWidth))
-        level[:] = 9 # blank space
+        level = np.zeros((levelHeight, levelWidth))
+        level[:] = 9.0 # blank space
         avatar_observation = Observation()
         for ii in range(levelWidth):                    
             for jj in range(levelHeight):
@@ -210,39 +210,39 @@ class Agent(AbstractPlayer):
     def detectElement(self, o):
         if o.category == 4:
             if o.itype == 3:
-                return 0
+                return 0.0
             elif o.itype == 0:
-                return 1 # Wall
+                return 1.0 # Wall
             elif o.itype == 4:
-                return 2 # Key
+                return 2.0 # Key
             else:
-                return 3 # Agent
+                return 3.0 # Agent
             
              
         elif o.category == 0:
             if o.itype == 5:
-                return 3
+                return 3.0
             elif o.itype == 6:
-                return 4
+                return 4.0
             elif o.itype == 1:
-                return 3
+                return 3.0
             else:
-                return 3
+                return 3.0
              
         elif o.category == 6:
-            return 5 # Enemy
+            return 5.0 # Enemy
         elif o.category == 2:
-            return 6 # Exit
+            return 6.0 # Exit
         elif o.category == 3:
             if o.itype == 1:
-                return 5
+                return 5.0
             else:         
-                return 5         
+                return 5.0      
         elif o.category == 5:
             if o.itype == 5:
-                return 7
+                return 7.0
             else:         
-                return 5
+                return 5.0
         else:                          
-            return 8
+            return 8.0
 
