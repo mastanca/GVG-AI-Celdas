@@ -222,10 +222,10 @@ class ClientComm:
         self.global_ect = ElapsedCpuTimer()
         self.global_ect.setMaxTimeMillis(CompetitionParameters.TOTAL_LEARNING_TIME)
         ect = ElapsedCpuTimer()
-        ect.setMaxTimeMillis(CompetitionParameters.START_TIME)
+        ect.setMaxTimeMillis(5000000)
         self.startAgent()
         if ect.exceededMaxTime():
-            self.io.writeToServer(self.lastMessageId, "START_FAILED", self.LOG)
+            self.io.writeToServer(self.lastMessageId, "START_FAILED_DUE_TO_TIMEMOUT", self.LOG)
         else:
             self.io.writeToServer(self.lastMessageId, "START_DONE" + "#" + self.lastSsoType, self.LOG)
 

@@ -16,7 +16,10 @@ class ReplayMemory():
             self.memory.append(experience)
 
     def sample(self, batchSize):
-        return random.sample(self.memory, batchSize)
+        if batchSize > len(self.memory):
+            return random.sample(self.memory, len(self.memory))
+        else:
+            return random.sample(self.memory, batchSize)
 
     @property
     def numSamples(self):

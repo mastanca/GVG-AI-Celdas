@@ -80,6 +80,7 @@ class Agent(AbstractPlayer):
             # Train
             print('Train')
             loss = self.train(self.policyNetwork, self.replayMemory)
+            print('Loss: ' + str(loss))
 
         
         action, index = self.getNextAction(sso)
@@ -96,10 +97,11 @@ class Agent(AbstractPlayer):
             return 0
         batch = replayMemory.sample(BATCH_SIZE)
         asd = [np.ravel(self.get_perception(val.state)) for val in batch]
-        # print(asd)
+        print(asd)
+        bsd = [ord(i) for i in asd]
         # bsd = [list(i) for i in asd]
         # print(bsd)
-        states = asd
+        states = np.array(bsd)
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
         next_states = np.array([(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch])
@@ -132,7 +134,7 @@ class Agent(AbstractPlayer):
         # Do exploration or exploitation
         if self.movementStrategy.shouldExploit():
             #Exploitation
-            index = self.replayMemory.sample(BATCH_SIZE)[0].actionIndex
+            index = self.replayMemory.sample(BATCH_SIZE).actionIndex
             action = sso.availableActions[index] 
             # print("Exploitation")
         else:
