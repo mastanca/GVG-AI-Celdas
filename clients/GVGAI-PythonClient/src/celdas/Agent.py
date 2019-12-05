@@ -78,15 +78,14 @@ class Agent(AbstractPlayer):
 
         if self.lastState is not None:
             reward = self.getReward(self.lastState, currentPosition)
-            self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, sso, reward))
+            self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
             # Train
             print('Train')
             loss = self.train(self.policyNetwork, self.replayMemory)
             print('Loss: ' + str(loss))
 
-        
-        action, index = self.getNextAction(sso)
-        
+        index = self.choose_action(sso, self.policyNetwork, self.movementStrategy.epsilon)
+        action = sso.availableActions[index]
         self.lastState = sso
         self.lastPosition = currentPosition
         if index is not None:
@@ -106,7 +105,9 @@ class Agent(AbstractPlayer):
         states = tf.convert_to_tensor(asd, dtype=tf.float32)
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
-        next_states = tf.convert_to_tensor(np.array([(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]))
+        bsd = [(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]
+        csd = [np.ravel(self.get_perception(b)) for b in bsd]
+        next_states = tf.convert_to_tensor(csd, dtype=tf.float32)
         # predict Q(s,a) given the batch of states
         prim_qt = policyNetwork(states)
         # predict Q(s',a') from the evaluation network
@@ -117,8 +118,7 @@ class Agent(AbstractPlayer):
         valid_idxs = np.array(next_states).sum(axis=1) != 0
         batch_idxs = np.arange(BATCH_SIZE)
         if targetNetwork is None:
-            updates[valid_idxs] += GAMMA * \
-                np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1)
+            updates[valid_idxs] += GAMMA * np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1)
         else:
             prim_action_tp1 = np.argmax(prim_qtp1.numpy(), axis=1)
             q_from_target = targetNetwork(next_states)
@@ -132,19 +132,25 @@ class Agent(AbstractPlayer):
                 t.assign(t * (1 - TAU) + e * TAU)
         return loss
 
-    def getNextAction(self, sso):
-        # Do exploration or exploitation
-        if self.movementStrategy.shouldExploit():
-            #Exploitation
-            index = self.replayMemory.sample(BATCH_SIZE).actionIndex
-            action = sso.availableActions[index] 
-            # print("Exploitation")
+    def choose_action(self, sso, policyNetwork, eps):
+        if random.random() < eps:
+            return random.randint(0, NUM_ACTIONS - 1)
         else:
-            #Exploration
-            index = random.randint(0, len(sso.availableActions) - 1)
-            action = sso.availableActions[index]
-            # print("Exploration")
-        return action, index
+            return np.argmax(policyNetwork(sso.reshape(1, -1)))
+
+    # def getNextAction(self, sso):
+    #     # Do exploration or exploitation
+    #     if self.movementStrategy.shouldExploit():
+    #         #Exploitation
+    #         index = self.replayMemory.sample(BATCH_SIZE).actionIndex
+    #         action = sso.availableActions[index] 
+    #         # print("Exploitation")
+    #     else:
+    #         #Exploration
+    #         index = random.randint(0, len(sso.availableActions) - 1)
+    #         action = sso.availableActions[index]
+    #         # print("Exploration")
+    #     return action, index
 
     def getAvatarCoordinates(self, state):
         position = state.avatarPosition
@@ -154,19 +160,19 @@ class Agent(AbstractPlayer):
         level = self.get_perception(lastState)
         col = currentPosition[1] # col
         row = currentPosition[0] # row
-        reward = 0
+        reward = 0.0
         if level[col][row] == 9 or level[col][row] == 3:
             # If we are in a safe spot or didn't move
-            reward = -1
+            reward = -1.0
         elif level[col][row] == 2:
             # If we got the key
-            reward = 100
+            reward = 100.0
         elif level[col][row] == 6:
             # If we are at the exit
-            reward = 50
+            reward = 50.0
         elif level[col][row] == 5:
             # If we touched an enemy
-            reward = -100
+            reward = -100.0
         return reward
 
     """
