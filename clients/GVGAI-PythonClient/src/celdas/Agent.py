@@ -1,4 +1,6 @@
 import random
+import os
+import datetime as dt
 
 from AbstractPlayer import AbstractPlayer
 from Types import *
@@ -22,11 +24,14 @@ np.random.seed(91218)  # Set np seed for consistent results across runs
 
 MEMORY_CAPACITY = 50000
 NUM_ACTIONS = 5
-BATCH_SIZE = 32
+BATCH_SIZE = 6
 GAMMA = 0.95
 TAU = 0.08
 state_size = 4
-NUM_OF_EPISODES = 1000
+STORE_PATH = os.getcwd()
+train_writer = tf.summary.create_file_writer(
+    STORE_PATH + "/logs/Zelda_{}".format(dt.datetime.now().strftime('%d%m%Y%H%M')))
+
 
 class Agent(AbstractPlayer):
     def __init__(self):
@@ -37,11 +42,9 @@ class Agent(AbstractPlayer):
         self.gotTheKey = False
 
         networkOptions = [
-            keras.layers.Dense(117, input_dim=117, activation='relu'),
+            keras.layers.Dense(24, input_dim=117, activation='relu'),
             keras.layers.Dense(
-                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(
-                150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+                32, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(NUM_ACTIONS)
         ]
 
@@ -61,9 +64,10 @@ class Agent(AbstractPlayer):
         self.lastState = None
         self.lastPosition = None
         self.lastActionIndex = None
-        self.episode += 1
         self.averageLoss = 0
         self.gameOver = False
+        self.cnt = 0
+        self.steps = 0
         print("Game initialized")
 
     """
@@ -79,6 +83,7 @@ class Agent(AbstractPlayer):
 
     def act(self, sso, elapsedTimer):        
         # pprint(vars(sso))
+        # pprint(sso.NPCPositions)
         # print(self.get_perception(sso))
         currentPosition = self.getAvatarCoordinates(sso)
 
@@ -87,7 +92,8 @@ class Agent(AbstractPlayer):
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
             # Train
             loss = self.train(self.policyNetwork, self.replayMemory, self.targetNetwork)
-            print('Loss: ' + str(loss))
+            self.averageLoss += loss
+            self.cnt += reward
 
         index = self.getNextAction(sso, self.policyNetwork)
         action = sso.availableActions[index]
@@ -96,6 +102,7 @@ class Agent(AbstractPlayer):
         if index is not None:
             self.lastActionIndex = index
         # print("Action and index: " + str(action) + " " + str(index))
+        self.steps += 1
         return action
 
     def stateToTensor(self, state):
@@ -140,12 +147,12 @@ class Agent(AbstractPlayer):
         # Do exploration or exploitation
         if self.movementStrategy.shouldExploit():
             #Exploitation
-            print('Exploitation')
+            # print('Exploitation')
             sd = tf.reshape(policyNetwork(self.stateToTensor(state)), (1, -1))
             return np.argmax(sd)
         else:
             #Exploration
-            print('Exploration')
+            # print('Exploration')
             return random.randint(0, NUM_ACTIONS - 1)
 
     def getAvatarCoordinates(self, state):
@@ -186,12 +193,23 @@ class Agent(AbstractPlayer):
     """
 
     def result(self, sso, elapsedTimer):
+        print("GAME OVER")
         self.gameOver = True
         if self.lastActionIndex is not None:
             reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso))
             if not sso.isAvatarAlive:
                 reward = -1000.0
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
+        self.episode += 1
+
+        if self.gameOver:
+            self.averageLoss /= self.cnt
+            print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
+                self.episode, self.cnt, self.averageLoss, self.movementStrategy.epsilon))
+            with train_writer.as_default():
+                tf.summary.scalar('reward', self.cnt, step=self.steps)
+                tf.summary.scalar(
+                    'avg loss', self.averageLoss, step=self.steps)
         return random.randint(0, 2)
 
     def get_perception(self, sso):

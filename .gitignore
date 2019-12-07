@@ -55,6 +55,8 @@ clients/GVGAI-PythonClient/src/logs/output_server_redirect.txt
 
 clients/GVGAI-PythonClient/src/logs/clientLog.txt
 
+clients/GVGAI-PythonClient/src/logs/
+
 #Super secret folder with private games, in the privte repository
 examples/super_secret
 src/META-INF/MANIFEST.MF

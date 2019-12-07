@@ -13,7 +13,7 @@ class ReplayMemory():
     def pushExperience(self, experience):
         self.memory.append(experience)
         if len(self.memory) > self.capacity:
-            self.memory.pop(0)
+            self.memory.pop(random.randint(0, len(self.memory) -1))
 
     def sample(self, batchSize):
         if batchSize > len(self.memory):
