@@ -22,7 +22,7 @@ np.random.seed(91218)  # Set np seed for consistent results across runs
 
 MEMORY_CAPACITY = 50000
 NUM_ACTIONS = 5
-BATCH_SIZE = 10
+BATCH_SIZE = 32
 GAMMA = 0.95
 TAU = 0.08
 state_size = 4
@@ -36,17 +36,19 @@ class Agent(AbstractPlayer):
         self.episode = 0
         self.gotTheKey = False
 
-        self.policyNetwork = keras.Sequential([
-            keras.layers.Dense(5, input_dim = 117, activation = 'relu'),
-            keras.layers.Dense(NUM_ACTIONS, activation = 'softmax')
-        ])
-        self.targetNetwork = keras.Sequential([
-            keras.layers.Dense(5, input_dim=117, activation='relu'),
-            keras.layers.Dense(NUM_ACTIONS, activation='softmax')
-        ])
+        networkOptions = [
+            keras.layers.Dense(117, input_dim=117, activation='relu'),
+            keras.layers.Dense(
+                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(
+                150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(NUM_ACTIONS)
+        ]
+
+        self.policyNetwork = keras.Sequential(networkOptions)
+        self.targetNetwork = keras.Sequential(networkOptions)
         self.policyNetwork.compile(optimizer='adam',
-                                   loss='mse',
-                                   metrics=['accuracy'])
+                                   loss='mse')
        
     """
     * Public method to be called at the start of every level of a game.
@@ -161,7 +163,7 @@ class Agent(AbstractPlayer):
         elif level[col][row] == 2:
             # If we got the key
             self.gotTheKey = True
-            reward = 10000.0
+            reward = 1000.0
         elif level[col][row] == 6 and self.gotTheKey:
             # If we are at the exit
             reward = 2000.0
