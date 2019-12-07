@@ -3,7 +3,7 @@ import random
 class EpsilonStrategy():
     def __init__(self):
         self.epsilon = 1
-        self.epsilonDecreaseRate = 0.01
+        self.epsilonDecreaseRate = 0.0001
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
