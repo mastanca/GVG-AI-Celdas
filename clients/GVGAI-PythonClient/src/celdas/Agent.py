@@ -32,6 +32,14 @@ STORE_PATH = os.getcwd()
 train_writer = tf.summary.create_file_writer(
     STORE_PATH + "/logs/Zelda_{}".format(dt.datetime.now().strftime('%d%m%Y%H%M')))
 
+actionToFloat = {'ACTION_NIL': 0.0,
+       'ACTION_UP': 1.0,
+       'ACTION_LEFT': 2.0,
+       'ACTION_DOWN': 3.0,
+       'ACTION_RIGHT': 4.0,
+       'ACTION_USE': 5.0,
+       'ACTION_ESCAPE': 6.0}
+
 
 class Agent(AbstractPlayer):
     def __init__(self):
@@ -39,10 +47,13 @@ class Agent(AbstractPlayer):
         self.movementStrategy = EpsilonStrategy()
         self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
         self.episode = 0
-        self.gotTheKey = False
 
         networkOptions = [
-            keras.layers.Dense(200, input_dim=123, activation='relu'),
+            keras.layers.Dense(250, input_dim=124, activation='relu'),
+            keras.layers.Dense(
+                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(
+                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(
                 150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(NUM_ACTIONS)
@@ -69,6 +80,7 @@ class Agent(AbstractPlayer):
         self.gameOver = False
         self.cnt = 0
         self.steps = 0
+        self.gotTheKey = False
         print("Game initialized")
 
     """
@@ -109,13 +121,14 @@ class Agent(AbstractPlayer):
     # def stateToTensor(self, state):
         # return tf.convert_to_tensor([np.ravel(self.get_perception(state))], dtype=tf.float32)
 
+
     # Modify here to alter network inputs, be careful of dynamic arrays and to change network inputs
     def buildNetworkInput(self, state):
         perception = np.ravel(self.get_perception(state))
         # perception = np.append(perception, state.gameScore)
         # perception = np.append(perception, 0.0 if state.isGameOver else 1.0)
         perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
-        # perception = np.append(perception, state.avatarLastAction.value)
+        perception = np.append(perception, actionToFloat[state.avatarLastAction])
         perception = np.append(perception, np.ravel(state.avatarOrientation))
         perception = np.append(perception, len(state.NPCPositions)) # number of enemies
         perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
