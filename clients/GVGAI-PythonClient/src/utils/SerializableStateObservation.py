@@ -95,6 +95,9 @@ class Observation:
             self.position = Vector2d(parse_Observation['position'])
             self.reference = Vector2d(parse_Observation['reference'])
             self.sqDist = parse_Observation['sqDist']
+    
+    def getPositionAsArray(self):
+        return [self.position.x/10, self.position.y/10]
 
 class Vector2d:
     """

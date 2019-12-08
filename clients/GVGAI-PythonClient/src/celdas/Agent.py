@@ -42,9 +42,9 @@ class Agent(AbstractPlayer):
         self.gotTheKey = False
 
         networkOptions = [
-            keras.layers.Dense(24, input_dim=117, activation='relu'),
+            keras.layers.Dense(200, input_dim=123, activation='relu'),
             keras.layers.Dense(
-                32, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+                150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(NUM_ACTIONS)
         ]
 
@@ -52,6 +52,7 @@ class Agent(AbstractPlayer):
         self.targetNetwork = keras.Sequential(networkOptions)
         self.policyNetwork.compile(optimizer='adam',
                                    loss='mse')
+        print(self.policyNetwork.summary())
        
     """
     * Public method to be called at the start of every level of a game.
@@ -105,19 +106,37 @@ class Agent(AbstractPlayer):
         self.steps += 1
         return action
 
-    def stateToTensor(self, state):
-        return tf.convert_to_tensor([np.ravel(self.get_perception(state))], dtype=tf.float32)
+    # def stateToTensor(self, state):
+        # return tf.convert_to_tensor([np.ravel(self.get_perception(state))], dtype=tf.float32)
+
+    # Modify here to alter network inputs, be careful of dynamic arrays and to change network inputs
+    def buildNetworkInput(self, state):
+        perception = np.ravel(self.get_perception(state))
+        # perception = np.append(perception, state.gameScore)
+        # perception = np.append(perception, 0.0 if state.isGameOver else 1.0)
+        perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
+        # perception = np.append(perception, state.avatarLastAction.value)
+        perception = np.append(perception, np.ravel(state.avatarOrientation))
+        perception = np.append(perception, len(state.NPCPositions)) # number of enemies
+        perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
+        # perception = np.append(perception, np.ravel(
+            # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
+        perception = np.append(perception, np.ravel(
+            [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
+        return perception
 
     def train(self, policyNetwork, replayMemory, targetNetwork = None):
         if replayMemory.numSamples < BATCH_SIZE * 3:
             return 0
         batch = replayMemory.sample(BATCH_SIZE)
-        rawStates = [np.ravel(self.get_perception(val.state)) for val in batch]
+        # rawStates = [np.ravel(self.get_perception(val.state)) for val in batch]
+        rawStates = [self.buildNetworkInput(val.state) for val in batch]
         states = tf.convert_to_tensor(rawStates, dtype=tf.float32)
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
         rawNextStates = [(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]
-        preTensorNextStates = [np.ravel(self.get_perception(b)) for b in rawNextStates]
+        # preTensorNextStates = [np.ravel(self.get_perception(b)) for b in rawNextStates]
+        preTensorNextStates = [self.buildNetworkInput(val.state) for vcal in rawNextStates]
         nextStates = tf.convert_to_tensor(preTensorNextStates, dtype=tf.float32)
         # predict Q(s,a) given the batch of states
         prim_qt = policyNetwork(states)
@@ -148,7 +167,8 @@ class Agent(AbstractPlayer):
         if self.movementStrategy.shouldExploit():
             #Exploitation
             # print('Exploitation')
-            sd = tf.reshape(policyNetwork(self.stateToTensor(state)), (1, -1))
+            sd = tf.reshape(policyNetwork(tf.convert_to_tensor(
+                [self.buildNetworkInput(state)], dtype=tf.float32)), (1, -1))
             return np.argmax(sd)
         else:
             #Exploration
