@@ -101,8 +101,11 @@ class Agent(AbstractPlayer):
         # pprint(sso.NPCPositions)
         # print(self.get_perception(sso))
         currentPosition = self.getAvatarCoordinates(sso)
-        if sso.immovablePositions and not self.gotTheKey and len(sso.immovablePositions) > 0 and len(sso.immovablePositions[1]) > 0:
-            self.keyPosition = sso.immovablePositions[1][0].getPositionAsArray()
+        if not self.gotTheKey:
+            try:
+                self.keyPosition = sso.immovablePositions[1][0].getPositionAsArray()
+            except:
+                self.gotTheKey = True
 
         if self.lastState is not None:
             reward = self.getReward(self.lastState, currentPosition, sso)
@@ -215,7 +218,6 @@ class Agent(AbstractPlayer):
         #     print('closer')
         #     reward = 5.0
         elif self.keyPosition is not None and self.isCloserToKey(lastState, currentState):
-            print('closer')
             reward = 2.0
         elif level[col][row] == 2:
             # If we got the key
