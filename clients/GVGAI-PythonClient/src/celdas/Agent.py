@@ -16,13 +16,14 @@ import numpy as np
 from pprint import pprint
 import tensorflow as tf
 from tensorflow import keras
+from scipy.spatial import distance
 
 tf.compat.v1.enable_v2_behavior()
 
-np.random.seed(91218)  # Set np seed for consistent results across runs
+# np.random.seed(91218)  # Set np seed for consistent results across runs
 # tf.set_random_seed(91218)
 
-MEMORY_CAPACITY = 50000
+MEMORY_CAPACITY = 5000
 NUM_ACTIONS = 5
 BATCH_SIZE = 6
 GAMMA = 0.95
@@ -49,9 +50,9 @@ class Agent(AbstractPlayer):
         self.episode = 0
 
         networkOptions = [
-            keras.layers.Dense(250, input_dim=124, activation='relu'),
-            keras.layers.Dense(
-                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(250, input_dim=125, activation='relu'),
+            # keras.layers.Dense(
+            #     200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(
                 200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(
@@ -81,6 +82,7 @@ class Agent(AbstractPlayer):
         self.cnt = 0
         self.steps = 0
         self.gotTheKey = False
+        self.keyPosition = None
         print("Game initialized")
 
     """
@@ -99,9 +101,11 @@ class Agent(AbstractPlayer):
         # pprint(sso.NPCPositions)
         # print(self.get_perception(sso))
         currentPosition = self.getAvatarCoordinates(sso)
+        if sso.immovablePositions and not self.gotTheKey and len(sso.immovablePositions) > 0 and len(sso.immovablePositions[1]) > 0:
+            self.keyPosition = sso.immovablePositions[1][0].getPositionAsArray()
 
         if self.lastState is not None:
-            reward = self.getReward(self.lastState, currentPosition)
+            reward = self.getReward(self.lastState, currentPosition, sso)
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
             # Train
             loss = self.train(self.policyNetwork, self.replayMemory, self.targetNetwork)
@@ -134,6 +138,7 @@ class Agent(AbstractPlayer):
         perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
         # perception = np.append(perception, np.ravel(
             # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
+        perception = np.append(perception, self.getDistanceToKey(state))
         perception = np.append(perception, np.ravel(
             [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
         return perception
@@ -192,24 +197,41 @@ class Agent(AbstractPlayer):
         position = state.avatarPosition
         return [int(position[1]/10), int(position[0]/10)]
 
-    def getReward(self, lastState, currentPosition):
+    def getDistanceToKey(self, state):
+        return 0.0 if self.gotTheKey else distance.cityblock(state.avatarPosition, self.keyPosition)
+
+    def isCloserToKey(self, lastState, currentState):
+        return self.getDistanceToKey(currentState) < self.getDistanceToKey(lastState)
+
+    def getReward(self, lastState, currentPosition, currentState):
         level = self.get_perception(lastState)
         col = currentPosition[0] # col
         row = currentPosition[1] # row
         reward = 0.0
-        if level[col][row] == 9 or level[col][row] == 3:
-            # If we are in a safe spot or didn't move
-            reward = -1.0
+        if currentState.NPCPositions and len(currentState.NPCPositions[0]) < len(lastState.NPCPositions[0]):
+            print('KILLED AN ENEMY')
+            reward = 100.0
+        # elif self.keyPosition is not None and np.linalg.norm(np.array(lastState.avatarPosition)-np.array(self.keyPosition)) < np.linalg.norm(np.array(currentState.avatarPosition)-np.array(self.keyPosition)):
+        #     print('closer')
+        #     reward = 5.0
+        elif self.keyPosition is not None and self.isCloserToKey(lastState, currentState):
+            print('closer')
+            reward = 2.0
         elif level[col][row] == 2:
             # If we got the key
+            print('GOT THE KEY')
             self.gotTheKey = True
             reward = 1000.0
         elif level[col][row] == 6 and self.gotTheKey:
             # If we are at the exit
+            print('WON')
             reward = 2000.0
         elif level[col][row] == 5:
             # If we touched an enemy
             reward = -50.0
+        elif level[col][row] == 9 or level[col][row] == 3:
+            # If we are in a safe spot or didn't move
+            reward = -5.0
         return reward
 
     """
@@ -226,10 +248,9 @@ class Agent(AbstractPlayer):
     """
 
     def result(self, sso, elapsedTimer):
-        print("GAME OVER")
         self.gameOver = True
         if self.lastActionIndex is not None:
-            reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso))
+            reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
             if not sso.isAvatarAlive:
                 reward = -1000.0
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
