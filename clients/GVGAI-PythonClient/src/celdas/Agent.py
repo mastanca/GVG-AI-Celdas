@@ -23,12 +23,12 @@ tf.compat.v1.enable_v2_behavior()
 # np.random.seed(91218)  # Set np seed for consistent results across runs
 # tf.set_random_seed(91218)
 
-MEMORY_CAPACITY = 5000
+MEMORY_CAPACITY = 1000000
 NUM_ACTIONS = 5
-BATCH_SIZE = 6
-GAMMA = 0.95
+BATCH_SIZE = 32
+GAMMA = 0.99
 TAU = 0.08
-state_size = 4
+state_size = 124
 STORE_PATH = os.getcwd()
 train_writer = tf.summary.create_file_writer(
     STORE_PATH + "/logs/Zelda_{}".format(dt.datetime.now().strftime('%d%m%Y%H%M')))
@@ -50,13 +50,13 @@ class Agent(AbstractPlayer):
         self.episode = 0
 
         networkOptions = [
-            keras.layers.Dense(100, input_dim=122, activation='relu'),
-            # keras.layers.Dense(
-            #     200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(100, input_dim=state_size, activation='relu'),
             keras.layers.Dense(
                 200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            # keras.layers.Dense(
-            #     150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(
+                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(
+                150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(NUM_ACTIONS)
         ]
 
@@ -83,6 +83,8 @@ class Agent(AbstractPlayer):
         self.steps = 0
         self.gotTheKey = False
         self.keyPosition = None
+        self.closerToExit = False
+        self.closerToKey = False
         print("Game initialized")
 
     """
@@ -102,11 +104,11 @@ class Agent(AbstractPlayer):
         # print(self.get_perception(sso))
         currentPosition = self.getAvatarCoordinates(sso)
         if not self.gotTheKey:
-            try:
-                self.keyPosition = sso.immovablePositions[1][0].getPositionAsArray()
-            except:
-                self.gotTheKey = True
-
+            # try:
+            self.keyPosition = sso.immovablePositions[0][0].getPositionAsArray()
+            # except:
+            #     self.gotTheKey = True
+        self.exitPosition = sso.portalsPositions[0][0].getPositionAsArray()
         if self.lastState is not None:
             reward = self.getReward(self.lastState, currentPosition, sso)
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
@@ -131,17 +133,21 @@ class Agent(AbstractPlayer):
 
     # Modify here to alter network inputs, be careful of dynamic arrays and to change network inputs
     def buildNetworkInput(self, state):
-        perception = np.ravel(self.get_perception(state))
+        perception = []
+        perception = np.append(perception, np.ravel(self.get_perception(state)))
         # perception = np.append(perception, state.gameScore)
         # perception = np.append(perception, 0.0 if state.isGameOver else 1.0)
         perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
-        perception = np.append(perception, actionToFloat[state.avatarLastAction])
+        perception = np.append(perception, 0.0 if not self.closerToExit else 1.0)
+        perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
+        # perception = np.append(perception, actionToFloat[state.avatarLastAction])
         perception = np.append(perception, np.ravel(state.avatarOrientation))
         # perception = np.append(perception, len(state.NPCPositions)) # number of enemies
         # perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
         # perception = np.append(perception, np.ravel(
             # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
         perception = np.append(perception, self.getDistanceToKey(state))
+        perception = np.append(perception, self.getDistanceToExit(state))
         # perception = np.append(perception, np.ravel(
         #     [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
         return perception
@@ -156,7 +162,6 @@ class Agent(AbstractPlayer):
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
         rawNextStates = [(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]
-        # preTensorNextStates = [np.ravel(self.get_perception(b)) for b in rawNextStates]
         preTensorNextStates = [self.buildNetworkInput(val.state) for vcal in rawNextStates]
         nextStates = tf.convert_to_tensor(preTensorNextStates, dtype=tf.float32)
         # predict Q(s,a) given the batch of states
@@ -168,19 +173,16 @@ class Agent(AbstractPlayer):
         updates = rewards
         valid_idxs = np.array(nextStates).sum(axis=1) != 0
         batch_idxs = np.arange(BATCH_SIZE)
-        if targetNetwork is None:
-            updates[valid_idxs] += GAMMA * np.amax(prim_qtp1.numpy()[valid_idxs, :], axis=1)
-        else:
-            prim_action_tp1 = np.argmax(prim_qtp1.numpy(), axis=1)
-            q_from_target = targetNetwork(nextStates)
-            updates[valid_idxs] += GAMMA * q_from_target.numpy()[batch_idxs[valid_idxs],
-                                                                prim_action_tp1[valid_idxs]]
+
+        prim_action_tp1 = np.argmax(prim_qtp1.numpy(), axis=1)
+        q_from_target = targetNetwork(nextStates)
+        updates[valid_idxs] += GAMMA * q_from_target.numpy()[batch_idxs[valid_idxs],
+                                                            prim_action_tp1[valid_idxs]]
         target_q[batch_idxs, actions] = updates
         loss = policyNetwork.train_on_batch(states, target_q)
-        if targetNetwork is not None:
-            # update target network parameters slowly from primary network
-            for t, e in zip(targetNetwork.trainable_variables, policyNetwork.trainable_variables):
-                t.assign(t * (1 - TAU) + e * TAU)
+        # update target network parameters slowly from policy network
+        for t, e in zip(targetNetwork.trainable_variables, policyNetwork.trainable_variables):
+            t.assign(t * (1 - TAU) + e * TAU)
         return loss
 
     def getNextAction(self, state, policyNetwork):
@@ -206,36 +208,49 @@ class Agent(AbstractPlayer):
         return 0.0 if self.gotTheKey else distToKey
 
     def isCloserToKey(self, lastState, currentState):
-        return self.getDistanceToKey(currentState) < self.getDistanceToKey(lastState)
+        closer = self.getDistanceToKey(currentState) < self.getDistanceToKey(lastState)
+        self.closerToKey = closer
+        return closer
+
+    def getDistanceToExit(self, state):
+        distToExit = distance.cityblock(
+            self.getAvatarCoordinates(state), self.exitPosition)
+        return distToExit
+
+    def isCloserToExit(self, lastState, currentState):
+        closer = self.getDistanceToExit(currentState) < self.getDistanceToExit(lastState)
+        self.closerToExit = closer
+        return closer
 
     def getReward(self, lastState, currentPosition, currentState):
         level = self.get_perception(lastState)
         col = int(currentPosition[0]) # col
         row = int(currentPosition[1]) # row
         reward = 0.0
-        if currentState.NPCPositions and len(currentState.NPCPositions[0]) < len(lastState.NPCPositions[0]):
+        if currentState.NPCPositions and currentState.NPCPositionsNum < lastState.NPCPositionsNum:
             print('KILLED AN ENEMY')
-            reward = 10.0
-        # elif self.keyPosition is not None and np.linalg.norm(np.array(lastState.avatarPosition)-np.array(self.keyPosition)) < np.linalg.norm(np.array(currentState.avatarPosition)-np.array(self.keyPosition)):
-        #     print('closer')
-        #     reward = 5.0
+            reward = 5.0
         elif self.keyPosition is not None and self.isCloserToKey(lastState, currentState):
-            reward = 10.0
+            reward = 2.0
+        elif self.keyPosition is not None and not self.isCloserToKey(lastState, currentState):
+            reward = -1.0
+        elif self.gotTheKey and self.isCloserToExit(lastState, currentState):
+            reward = 100.0
         elif level[col][row] == 2:
             # If we got the key
             print('GOT THE KEY')
             self.gotTheKey = True
-            reward = 1000.0
+            reward = 10000.0
         elif level[col][row] == 6 and self.gotTheKey:
             # If we are at the exit
             print('WON')
-            reward = 2000.0
+            reward = 20000.0
         elif level[col][row] == 5:
             # If we touched an enemy
             reward = -50.0
         elif level[col][row] == 9 or level[col][row] == 3:
             # If we are in a safe spot or didn't move
-            reward = -5.0
+            reward = -1.0
         return reward
 
     """
@@ -264,6 +279,7 @@ class Agent(AbstractPlayer):
             self.averageLoss /= self.cnt
             print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
                 self.episode, self.cnt, self.averageLoss, self.movementStrategy.epsilon))
+            print("Winner: {}".format(sso.gameWinner))
             with train_writer.as_default():
                 tf.summary.scalar('reward', self.cnt, step=self.steps)
                 tf.summary.scalar(
@@ -316,8 +332,10 @@ class Agent(AbstractPlayer):
              
         elif o.category == 6:
             return 5.0 # Enemy
-        elif o.category == 2:
+        elif o.category == 2 and self.gotTheKey:
             return 6.0 # Exit
+        elif o.category == 2 and not self.gotTheKey:
+            return 9.0 # Exit but didn't got the key
         elif o.category == 3:
             if o.itype == 1:
                 return 5.0
