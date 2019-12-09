@@ -50,13 +50,13 @@ class Agent(AbstractPlayer):
         self.episode = 0
 
         networkOptions = [
-            keras.layers.Dense(250, input_dim=125, activation='relu'),
+            keras.layers.Dense(100, input_dim=122, activation='relu'),
             # keras.layers.Dense(
             #     200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(
                 200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(
-                150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            # keras.layers.Dense(
+            #     150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(NUM_ACTIONS)
         ]
 
@@ -137,13 +137,13 @@ class Agent(AbstractPlayer):
         perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
         perception = np.append(perception, actionToFloat[state.avatarLastAction])
         perception = np.append(perception, np.ravel(state.avatarOrientation))
-        perception = np.append(perception, len(state.NPCPositions)) # number of enemies
-        perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
+        # perception = np.append(perception, len(state.NPCPositions)) # number of enemies
+        # perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
         # perception = np.append(perception, np.ravel(
             # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
         perception = np.append(perception, self.getDistanceToKey(state))
-        perception = np.append(perception, np.ravel(
-            [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
+        # perception = np.append(perception, np.ravel(
+        #     [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
         return perception
 
     def train(self, policyNetwork, replayMemory, targetNetwork = None):
@@ -198,27 +198,29 @@ class Agent(AbstractPlayer):
 
     def getAvatarCoordinates(self, state):
         position = state.avatarPosition
-        return [int(position[1]/10), int(position[0]/10)]
+        return [float(position[1]/10), float(position[0]/10)]
 
     def getDistanceToKey(self, state):
-        return 0.0 if self.gotTheKey else distance.cityblock(state.avatarPosition, self.keyPosition)
+        distToKey = distance.cityblock(
+            self.getAvatarCoordinates(state), self.keyPosition)
+        return 0.0 if self.gotTheKey else distToKey
 
     def isCloserToKey(self, lastState, currentState):
         return self.getDistanceToKey(currentState) < self.getDistanceToKey(lastState)
 
     def getReward(self, lastState, currentPosition, currentState):
         level = self.get_perception(lastState)
-        col = currentPosition[0] # col
-        row = currentPosition[1] # row
+        col = int(currentPosition[0]) # col
+        row = int(currentPosition[1]) # row
         reward = 0.0
         if currentState.NPCPositions and len(currentState.NPCPositions[0]) < len(lastState.NPCPositions[0]):
             print('KILLED AN ENEMY')
-            reward = 100.0
+            reward = 10.0
         # elif self.keyPosition is not None and np.linalg.norm(np.array(lastState.avatarPosition)-np.array(self.keyPosition)) < np.linalg.norm(np.array(currentState.avatarPosition)-np.array(self.keyPosition)):
         #     print('closer')
         #     reward = 5.0
         elif self.keyPosition is not None and self.isCloserToKey(lastState, currentState):
-            reward = 2.0
+            reward = 10.0
         elif level[col][row] == 2:
             # If we got the key
             print('GOT THE KEY')
