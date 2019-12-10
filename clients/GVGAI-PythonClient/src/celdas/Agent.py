@@ -126,13 +126,11 @@ class Agent(AbstractPlayer):
         # return action
 
         if self.lastState is not None:
-            if self.buildNetworkInput(state).tolist().count(9.0) > len(self.buildNetworkInput(state))-15:
-                print("STATE SKIPPED")
-            else:
+            if self.buildNetworkInput(state).tolist().count(9.0) < len(self.buildNetworkInput(state))-15:
                 reward = self.getReward(self.lastState, currentPosition, state)
                 self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array([self.buildNetworkInput(state)]), state.isGameOver)
 
-        index = self.dqn.act(state)
+        index = self.dqn.act(np.array([self.buildNetworkInput(state)]))
         if index is not None:
             self.lastActionIndex = index
         action = state.availableActions[index]
