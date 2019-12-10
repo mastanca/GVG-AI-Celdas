@@ -23,10 +23,10 @@ tf.compat.v1.enable_v2_behavior()
 # np.random.seed(91218)  # Set np seed for consistent results across runs
 # tf.set_random_seed(91218)
 
-MEMORY_CAPACITY = 1000000
+MEMORY_CAPACITY = 50000
 NUM_ACTIONS = 5
 BATCH_SIZE = 32
-GAMMA = 0.99
+GAMMA = 0.95
 TAU = 0.08
 state_size = 124
 STORE_PATH = os.getcwd()
@@ -52,6 +52,10 @@ class Agent(AbstractPlayer):
         networkOptions = [
             keras.layers.Dense(100, input_dim=state_size, activation='relu'),
             keras.layers.Dense(
+                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+            keras.layers.Dense(
+                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+                            keras.layers.Dense(
                 200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(
                 200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
@@ -200,7 +204,7 @@ class Agent(AbstractPlayer):
 
     def getAvatarCoordinates(self, state):
         position = state.avatarPosition
-        return [float(position[1]/10), float(position[0]/10)]
+        return [float(position[1]), float(position[0])]
 
     def getDistanceToKey(self, state):
         distToKey = distance.cityblock(
