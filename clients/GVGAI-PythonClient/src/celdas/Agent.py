@@ -28,6 +28,7 @@ NUM_ACTIONS = 5
 BATCH_SIZE = 32
 GAMMA = 0.95
 TAU = 0.08
+ALPHA=0.001
 state_size = 124
 STORE_PATH = os.getcwd()
 train_writer = tf.summary.create_file_writer(
@@ -50,24 +51,18 @@ class Agent(AbstractPlayer):
         self.episode = 0
 
         networkOptions = [
-            keras.layers.Dense(100, input_dim=state_size, activation='relu'),
+            keras.layers.Dense(state_size, input_dim=state_size, activation='relu'),
             keras.layers.Dense(
-                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+                100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(
-                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-                            keras.layers.Dense(
-                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(
-                200, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(
-                150, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+                100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
             keras.layers.Dense(NUM_ACTIONS)
         ]
 
         self.policyNetwork = keras.Sequential(networkOptions)
         self.targetNetwork = keras.Sequential(networkOptions)
-        self.policyNetwork.compile(optimizer='adam',
-                                   loss='mse')
+        self.policyNetwork.compile(optimizer=keras.optimizers.Adam(learning_rate=ALPHA),
+                                   loss=keras.losses.mean_squared_error)
         print(self.policyNetwork.summary())
        
     """
@@ -185,6 +180,9 @@ class Agent(AbstractPlayer):
         target_q[batch_idxs, actions] = updates
         loss = policyNetwork.train_on_batch(states, target_q)
         # update target network parameters slowly from policy network
+        # if self.steps % 10 == 0:
+        #     for t, e in zip(targetNetwork.trainable_variables, policyNetwork.trainable_variables):
+        #         t.assign(e)
         for t, e in zip(targetNetwork.trainable_variables, policyNetwork.trainable_variables):
             t.assign(t * (1 - TAU) + e * TAU)
         return loss
@@ -231,24 +229,24 @@ class Agent(AbstractPlayer):
         col = int(currentPosition[0]) # col
         row = int(currentPosition[1]) # row
         reward = 0.0
-        if currentState.NPCPositions and currentState.NPCPositionsNum < lastState.NPCPositionsNum:
+        if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
             print('KILLED AN ENEMY')
             reward = 5.0
-        elif self.keyPosition is not None and self.isCloserToKey(lastState, currentState):
+        elif self.isCloserToKey(lastState, currentState):
             reward = 2.0
-        elif self.keyPosition is not None and not self.isCloserToKey(lastState, currentState):
-            reward = -1.0
+        elif not self.isCloserToKey(lastState, currentState):
+            reward = -2.0
         elif self.gotTheKey and self.isCloserToExit(lastState, currentState):
             reward = 100.0
         elif level[col][row] == 2:
             # If we got the key
             print('GOT THE KEY')
             self.gotTheKey = True
-            reward = 10000.0
+            reward = 100.0
         elif level[col][row] == 6 and self.gotTheKey:
             # If we are at the exit
             print('WON')
-            reward = 20000.0
+            reward = 200.0
         elif level[col][row] == 5:
             # If we touched an enemy
             reward = -50.0
@@ -274,15 +272,15 @@ class Agent(AbstractPlayer):
         self.gameOver = True
         if self.lastActionIndex is not None:
             reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
-            if not sso.isAvatarAlive:
-                reward = -1000.0
+            if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
+                reward = -1.0
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
         self.episode += 1
 
         if self.gameOver:
-            self.averageLoss /= self.cnt
+            self.averageLoss /= self.steps
             print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
-                self.episode, self.cnt, self.averageLoss, self.movementStrategy.epsilon))
+                self.episode, self.steps, self.averageLoss, self.movementStrategy.epsilon))
             print("Winner: {}".format(sso.gameWinner))
             with train_writer.as_default():
                 tf.summary.scalar('reward', self.cnt, step=self.steps)

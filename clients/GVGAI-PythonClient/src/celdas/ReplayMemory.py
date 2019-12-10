@@ -1,6 +1,6 @@
 import random
 
-from pprint import pprint
+# from pprint import pprint
 
 class ReplayMemory():
     def __init__(self, capacity):
