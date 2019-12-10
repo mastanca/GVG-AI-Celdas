@@ -4,6 +4,7 @@ import datetime as dt
 
 from AbstractPlayer import AbstractPlayer
 from Types import *
+from DQNAgent import DQNAgent
 
 from EpsilonStrategy import EpsilonStrategy
 from ReplayMemory import ReplayMemory
@@ -46,24 +47,25 @@ actionToFloat = {'ACTION_NIL': 0.0,
 class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
-        self.movementStrategy = EpsilonStrategy()
-        self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
+        self.dqn = DQNAgent(state_size, NUM_ACTIONS)
+        # self.movementStrategy = EpsilonStrategy()
+        # self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
         self.episode = 0
 
-        networkOptions = [
-            keras.layers.Dense(state_size, input_dim=state_size, activation='relu'),
-            keras.layers.Dense(
-                100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(
-                100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-            keras.layers.Dense(NUM_ACTIONS)
-        ]
+        # networkOptions = [
+        #     keras.layers.Dense(state_size, input_dim=state_size, activation='relu'),
+        #     keras.layers.Dense(
+        #         100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #     keras.layers.Dense(
+        #         100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
+        #     keras.layers.Dense(NUM_ACTIONS)
+        # ]
 
-        self.policyNetwork = keras.Sequential(networkOptions)
-        self.targetNetwork = keras.Sequential(networkOptions)
-        self.policyNetwork.compile(optimizer=keras.optimizers.Adam(learning_rate=ALPHA),
-                                   loss=keras.losses.mean_squared_error)
-        print(self.policyNetwork.summary())
+        # self.policyNetwork = keras.Sequential(networkOptions)
+        # self.targetNetwork = keras.Sequential(networkOptions)
+        # self.policyNetwork.compile(optimizer=keras.optimizers.Adam(learning_rate=ALPHA),
+        #                            loss=keras.losses.mean_squared_error)
+        # print(self.policyNetwork.summary())
        
     """
     * Public method to be called at the start of every level of a game.
@@ -97,37 +99,52 @@ class Agent(AbstractPlayer):
      * @return The action to be performed by the agent.
      """
 
-    def act(self, sso, elapsedTimer):        
+    def act(self, state, elapsedTimer):        
         # pprint(vars(sso))
         # pprint(sso.NPCPositions)
         # print(self.get_perception(sso))
-        currentPosition = self.getAvatarCoordinates(sso)
+        currentPosition = self.getAvatarCoordinates(state)
         if not self.gotTheKey:
-            # try:
-            self.keyPosition = sso.immovablePositions[0][0].getPositionAsArray()
-            # except:
-            #     self.gotTheKey = True
-        self.exitPosition = sso.portalsPositions[0][0].getPositionAsArray()
-        if self.lastState is not None:
-            reward = self.getReward(self.lastState, currentPosition, sso)
-            self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
-            # Train
-            loss = self.train(self.policyNetwork, self.replayMemory, self.targetNetwork)
-            self.averageLoss += loss
-            self.cnt += reward
+            self.keyPosition = state.immovablePositions[0][0].getPositionAsArray()
 
-        index = self.getNextAction(sso, self.policyNetwork)
-        action = sso.availableActions[index]
-        self.lastState = sso
-        self.lastPosition = currentPosition
+        self.exitPosition = state.portalsPositions[0][0].getPositionAsArray()
+        # if self.lastState is not None:
+        #     reward = self.getReward(self.lastState, currentPosition, sso)
+        #     self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
+        #     # Train
+        #     loss = self.train(self.policyNetwork, self.replayMemory, self.targetNetwork)
+        #     self.averageLoss += loss
+        #     self.cnt += reward
+
+        # index = self.getNextAction(sso, self.policyNetwork)
+        # action = sso.availableActions[index]
+        # self.lastState = sso
+        # self.lastPosition = currentPosition
+        # if index is not None:
+        #     self.lastActionIndex = index
+        # self.steps += 1
+        # return action
+
+        if self.lastState is not None:
+            if self.buildNetworkInput(state).tolist().count(9.0) > len(self.buildNetworkInput(state))-15:
+                print("STATE SKIPPED")
+            else:
+                reward = self.getReward(self.lastState, currentPosition, state)
+                self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array([self.buildNetworkInput(state)]), state.isGameOver)
+
+        index = self.dqn.act(state)
         if index is not None:
             self.lastActionIndex = index
-        # print("Action and index: " + str(action) + " " + str(index))
+        action = state.availableActions[index]
+        self.lastPosition = currentPosition
+        self.lastState = state
         self.steps += 1
+        if len(self.dqn.memory) > BATCH_SIZE:
+                self.dqn.replay(BATCH_SIZE)
         return action
 
     # def stateToTensor(self, state):
-        # return tf.convert_to_tensor([np.ravel(self.get_perception(state))], dtype=tf.float32)
+    #     return tf.convert_to_tensor([state], dtype=tf.float32)
 
 
     # Modify here to alter network inputs, be careful of dynamic arrays and to change network inputs
@@ -270,18 +287,22 @@ class Agent(AbstractPlayer):
 
     def result(self, sso, elapsedTimer):
         self.gameOver = True
-        if self.lastActionIndex is not None:
-            reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
-            if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
-                reward = -1.0
-            self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
+        # if self.lastActionIndex is not None:
+        #     reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
+        #     if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
+        #         reward = -1.0
+        #     self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
         self.episode += 1
 
         if self.gameOver:
             self.averageLoss /= self.steps
+            # print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
+            #     self.episode, self.steps, self.averageLoss, self.movementStrategy.epsilon))
             print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
-                self.episode, self.steps, self.averageLoss, self.movementStrategy.epsilon))
+                self.episode, self.steps, self.averageLoss, self.dqn.epsilon))
             print("Winner: {}".format(sso.gameWinner))
+            if self.episode % 10 == 0:
+                self.dqn.save(STORE_PATH + "/network/zelda-ddqn.h5")
             with train_writer.as_default():
                 tf.summary.scalar('reward', self.cnt, step=self.steps)
                 tf.summary.scalar(
