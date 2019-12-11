@@ -30,7 +30,7 @@ BATCH_SIZE = 32
 GAMMA = 0.95
 TAU = 0.08
 ALPHA=0.001
-state_size = 117
+state_size = 120
 STORE_PATH = os.getcwd()
 train_writer = tf.summary.create_file_writer(
     STORE_PATH + "/logs/Zelda_{}".format(dt.datetime.now().strftime('%d%m%Y%H%M')))
@@ -74,6 +74,7 @@ class Agent(AbstractPlayer):
         self.keyPosition = None
         self.closerToExit = False
         self.closerToKey = False
+        self.avgReward = 0
         print("Game initialized")
 
     """
@@ -96,6 +97,7 @@ class Agent(AbstractPlayer):
         if self.lastState is not None:
             if self.buildNetworkInput(state).tolist().count(9.0) < len(self.buildNetworkInput(state))-15:
                 reward = self.getReward(self.lastState, currentPosition, state)
+                self.avgReward += reward
                 self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array([self.buildNetworkInput(state)]), state.isGameOver)
 
         index = self.dqn.act(np.array([self.buildNetworkInput(state)]))
@@ -115,16 +117,16 @@ class Agent(AbstractPlayer):
         perception = np.append(perception, np.ravel(self.get_perception(state)))
         # perception = np.append(perception, state.gameScore)
         # perception = np.append(perception, 0.0 if state.isGameOver else 1.0)
-        # perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
+        perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
         # perception = np.append(perception, 0.0 if not self.closerToExit else 1.0)
-        # perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
+        perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
         # perception = np.append(perception, actionToFloat[state.avatarLastAction])
         # perception = np.append(perception, np.ravel(state.avatarOrientation))
         # perception = np.append(perception, len(state.NPCPositions)) # number of enemies
         # perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
         # perception = np.append(perception, np.ravel(
             # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
-        # perception = np.append(perception, self.getDistanceToKey(state))
+        perception = np.append(perception, self.getDistanceToKey(state))
         # perception = np.append(perception, self.getDistanceToExit(state))
         # perception = np.append(perception, np.ravel(
         #     [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
@@ -210,9 +212,10 @@ class Agent(AbstractPlayer):
             if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
                 print('Dead')
                 reward = -1.0
+            self.avgReward += reward
             # self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
-                self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array(
-                    [self.buildNetworkInput(sso)]), sso.gameWinner == 'PLAYER_WINS')
+            self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array(
+                [self.buildNetworkInput(sso)]), sso.gameWinner == 'PLAYER_WINS')
         self.episode += 1
 
         if self.gameOver:
@@ -220,7 +223,7 @@ class Agent(AbstractPlayer):
             # print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
             #     self.episode, self.steps, self.averageLoss, self.movementStrategy.epsilon))
             print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
-                self.episode, self.steps, self.averageLoss, self.dqn.epsilon))
+                self.episode, self.avgReward, self.averageLoss, self.dqn.epsilon))
             print("Winner: {}".format(sso.gameWinner))
             if self.episode % 10 == 0:
                 print("Model Saved!")
