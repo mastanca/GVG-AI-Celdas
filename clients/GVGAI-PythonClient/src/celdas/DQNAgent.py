@@ -7,13 +7,13 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import backend as K
 
-
+MEMORY_SIZE = 50000
 
 class DQNAgent:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=2000)
+        self.memory = deque(maxlen=MEMORY_SIZE)
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
@@ -43,6 +43,7 @@ class DQNAgent:
         # Neural Net for Deep-Q learning Model
         model = Sequential()
         model.add(Dense(100, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(100, activation='relu'))
         model.add(Dense(100, activation='relu'))
         model.add(Dense(self.action_size, activation='linear'))
         model.compile(loss=self._huber_loss,

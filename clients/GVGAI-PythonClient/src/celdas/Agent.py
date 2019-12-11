@@ -30,7 +30,7 @@ BATCH_SIZE = 32
 GAMMA = 0.95
 TAU = 0.08
 ALPHA=0.001
-state_size = 124
+state_size = 117
 STORE_PATH = os.getcwd()
 train_writer = tf.summary.create_file_writer(
     STORE_PATH + "/logs/Zelda_{}".format(dt.datetime.now().strftime('%d%m%Y%H%M')))
@@ -49,7 +49,11 @@ class Agent(AbstractPlayer):
         AbstractPlayer.__init__(self)
         self.dqn = DQNAgent(state_size, NUM_ACTIONS)
         self.episode = 0
-        self.dqn.load(STORE_PATH + "/network/zelda-ddqn.h5")
+        try:
+            self.dqn.load(STORE_PATH + "/network/zelda-ddqn.h5")
+            print('Model loaded from file')
+        except:
+            print('Model file not found')
        
     """
     * Public method to be called at the start of every level of a game.
@@ -111,17 +115,17 @@ class Agent(AbstractPlayer):
         perception = np.append(perception, np.ravel(self.get_perception(state)))
         # perception = np.append(perception, state.gameScore)
         # perception = np.append(perception, 0.0 if state.isGameOver else 1.0)
-        perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
-        perception = np.append(perception, 0.0 if not self.closerToExit else 1.0)
-        perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
+        # perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
+        # perception = np.append(perception, 0.0 if not self.closerToExit else 1.0)
+        # perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
         # perception = np.append(perception, actionToFloat[state.avatarLastAction])
-        perception = np.append(perception, np.ravel(state.avatarOrientation))
+        # perception = np.append(perception, np.ravel(state.avatarOrientation))
         # perception = np.append(perception, len(state.NPCPositions)) # number of enemies
         # perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
         # perception = np.append(perception, np.ravel(
             # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
-        perception = np.append(perception, self.getDistanceToKey(state))
-        perception = np.append(perception, self.getDistanceToExit(state))
+        # perception = np.append(perception, self.getDistanceToKey(state))
+        # perception = np.append(perception, self.getDistanceToExit(state))
         # perception = np.append(perception, np.ravel(
         #     [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
         return perception
@@ -157,28 +161,29 @@ class Agent(AbstractPlayer):
         reward = 0.0
         if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
             print('KILLED AN ENEMY')
-            reward = 5.0
-        elif self.isCloserToKey(lastState, currentState):
-            reward = 2.0
-        elif not self.isCloserToKey(lastState, currentState):
-            reward = -2.0
-        elif self.gotTheKey and self.isCloserToExit(lastState, currentState):
-            reward = 100.0
-        elif level[col][row] == 2.0:
+            reward += 5.0
+        if self.isCloserToKey(lastState, currentState):
+            reward += 2.0
+        if not self.isCloserToKey(lastState, currentState):
+            reward += -2.0
+        if self.gotTheKey and self.isCloserToExit(lastState, currentState):
+            reward += 100.0
+        if level[col][row] == 2.0:
             # If we got the key
             print('GOT THE KEY')
             self.gotTheKey = True
-            reward = 100.0
+            reward += 100.0
         elif level[col][row] == 6.0 and self.gotTheKey:
             # If we are at the exit
             print('WON')
-            reward = 200.0
+            reward += 200.0
         elif level[col][row] == 5.0:
             # If we touched an enemy
-            reward = -50.0
+            print('Touched an enemy')
+            reward += -50.0
         elif level[col][row] == 9.0 or level[col][row] == 3.0:
             # If we are in a safe spot or didn't move
-            reward = -1.0
+            reward += -1.0
         return reward
 
     """
