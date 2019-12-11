@@ -162,10 +162,14 @@ class Agent(AbstractPlayer):
         if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
             print('KILLED AN ENEMY')
             reward += 5.0
-        if self.isCloserToKey(lastState, currentState):
-            reward += 2.0
-        if not self.isCloserToKey(lastState, currentState):
-            reward += -2.0
+        # if self.isCloserToKey(lastState, currentState):
+        #     reward += 2.0
+        # if not self.isCloserToKey(lastState, currentState):
+        #     reward += -2.0
+        if currentPosition == self.keyPosition and not self.gotTheKey:
+            reward += 100.0
+            print('GOT THE KEY')
+            self.gotTheKey = True
         if self.gotTheKey and self.isCloserToExit(lastState, currentState):
             reward += 100.0
         if level[col][row] == 2.0:
@@ -204,10 +208,11 @@ class Agent(AbstractPlayer):
         if self.lastActionIndex is not None:
             reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
             if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
+                print('Dead')
                 reward = -1.0
             # self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
                 self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array(
-                    [self.buildNetworkInput(sso)]), sso.isGameOver)
+                    [self.buildNetworkInput(sso)]), sso.gameWinner == 'PLAYER_WINS')
         self.episode += 1
 
         if self.gameOver:
