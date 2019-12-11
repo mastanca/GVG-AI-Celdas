@@ -48,24 +48,8 @@ class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
         self.dqn = DQNAgent(state_size, NUM_ACTIONS)
-        # self.movementStrategy = EpsilonStrategy()
-        # self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
         self.episode = 0
-
-        # networkOptions = [
-        #     keras.layers.Dense(state_size, input_dim=state_size, activation='relu'),
-        #     keras.layers.Dense(
-        #         100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #     keras.layers.Dense(
-        #         100, activation='relu', kernel_initializer=keras.initializers.he_normal()),
-        #     keras.layers.Dense(NUM_ACTIONS)
-        # ]
-
-        # self.policyNetwork = keras.Sequential(networkOptions)
-        # self.targetNetwork = keras.Sequential(networkOptions)
-        # self.policyNetwork.compile(optimizer=keras.optimizers.Adam(learning_rate=ALPHA),
-        #                            loss=keras.losses.mean_squared_error)
-        # print(self.policyNetwork.summary())
+        self.dqn.load(STORE_PATH + "/network/zelda-ddqn.h5")
        
     """
     * Public method to be called at the start of every level of a game.
@@ -99,32 +83,12 @@ class Agent(AbstractPlayer):
      * @return The action to be performed by the agent.
      """
 
-    def act(self, state, elapsedTimer):        
-        # pprint(vars(sso))
-        # pprint(sso.NPCPositions)
-        # print(self.get_perception(sso))
+    def act(self, state, elapsedTimer):
         currentPosition = self.getAvatarCoordinates(state)
         if not self.gotTheKey:
             self.keyPosition = state.immovablePositions[0][0].getPositionAsArray()
 
         self.exitPosition = state.portalsPositions[0][0].getPositionAsArray()
-        # if self.lastState is not None:
-        #     reward = self.getReward(self.lastState, currentPosition, sso)
-        #     self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
-        #     # Train
-        #     loss = self.train(self.policyNetwork, self.replayMemory, self.targetNetwork)
-        #     self.averageLoss += loss
-        #     self.cnt += reward
-
-        # index = self.getNextAction(sso, self.policyNetwork)
-        # action = sso.availableActions[index]
-        # self.lastState = sso
-        # self.lastPosition = currentPosition
-        # if index is not None:
-        #     self.lastActionIndex = index
-        # self.steps += 1
-        # return action
-
         if self.lastState is not None:
             if self.buildNetworkInput(state).tolist().count(9.0) < len(self.buildNetworkInput(state))-15:
                 reward = self.getReward(self.lastState, currentPosition, state)
@@ -138,13 +102,9 @@ class Agent(AbstractPlayer):
         self.lastState = state
         self.steps += 1
         if len(self.dqn.memory) > BATCH_SIZE:
-                self.dqn.replay(BATCH_SIZE)
+            self.averageLoss += self.dqn.replay(BATCH_SIZE)
         return action
-
-    # def stateToTensor(self, state):
-    #     return tf.convert_to_tensor([state], dtype=tf.float32)
-
-
+        
     # Modify here to alter network inputs, be careful of dynamic arrays and to change network inputs
     def buildNetworkInput(self, state):
         perception = []
@@ -166,58 +126,9 @@ class Agent(AbstractPlayer):
         #     [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
         return perception
 
-    def train(self, policyNetwork, replayMemory, targetNetwork = None):
-        if replayMemory.numSamples < BATCH_SIZE * 3:
-            return 0
-        batch = replayMemory.sample(BATCH_SIZE)
-        # rawStates = [np.ravel(self.get_perception(val.state)) for val in batch]
-        rawStates = [self.buildNetworkInput(val.state) for val in batch]
-        states = tf.convert_to_tensor(rawStates, dtype=tf.float32)
-        actions = np.array([val.actionIndex for val in batch])
-        rewards = np.array([val.reward for val in batch])
-        rawNextStates = [(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]
-        preTensorNextStates = [self.buildNetworkInput(val.state) for vcal in rawNextStates]
-        nextStates = tf.convert_to_tensor(preTensorNextStates, dtype=tf.float32)
-        # predict Q(s,a) given the batch of states
-        prim_qt = policyNetwork(states)
-        # predict Q(s',a') from the evaluation network
-        prim_qtp1 = policyNetwork(nextStates)
-        # copy the prim_qt into the target_q tensor - we then will update one index corresponding to the max action
-        target_q = prim_qt.numpy()
-        updates = rewards
-        valid_idxs = np.array(nextStates).sum(axis=1) != 0
-        batch_idxs = np.arange(BATCH_SIZE)
-
-        prim_action_tp1 = np.argmax(prim_qtp1.numpy(), axis=1)
-        q_from_target = targetNetwork(nextStates)
-        updates[valid_idxs] += GAMMA * q_from_target.numpy()[batch_idxs[valid_idxs],
-                                                            prim_action_tp1[valid_idxs]]
-        target_q[batch_idxs, actions] = updates
-        loss = policyNetwork.train_on_batch(states, target_q)
-        # update target network parameters slowly from policy network
-        # if self.steps % 10 == 0:
-        #     for t, e in zip(targetNetwork.trainable_variables, policyNetwork.trainable_variables):
-        #         t.assign(e)
-        for t, e in zip(targetNetwork.trainable_variables, policyNetwork.trainable_variables):
-            t.assign(t * (1 - TAU) + e * TAU)
-        return loss
-
-    def getNextAction(self, state, policyNetwork):
-        # Do exploration or exploitation
-        if self.movementStrategy.shouldExploit():
-            #Exploitation
-            # print('Exploitation')
-            sd = tf.reshape(policyNetwork(tf.convert_to_tensor(
-                [self.buildNetworkInput(state)], dtype=tf.float32)), (1, -1))
-            return np.argmax(sd)
-        else:
-            #Exploration
-            # print('Exploration')
-            return random.randint(0, NUM_ACTIONS - 1)
-
     def getAvatarCoordinates(self, state):
         position = state.avatarPosition
-        return [float(position[1]), float(position[0])]
+        return [float(position[1]/10), float(position[0]/10)]
 
     def getDistanceToKey(self, state):
         distToKey = distance.cityblock(
@@ -253,19 +164,19 @@ class Agent(AbstractPlayer):
             reward = -2.0
         elif self.gotTheKey and self.isCloserToExit(lastState, currentState):
             reward = 100.0
-        elif level[col][row] == 2:
+        elif level[col][row] == 2.0:
             # If we got the key
             print('GOT THE KEY')
             self.gotTheKey = True
             reward = 100.0
-        elif level[col][row] == 6 and self.gotTheKey:
+        elif level[col][row] == 6.0 and self.gotTheKey:
             # If we are at the exit
             print('WON')
             reward = 200.0
-        elif level[col][row] == 5:
+        elif level[col][row] == 5.0:
             # If we touched an enemy
             reward = -50.0
-        elif level[col][row] == 9 or level[col][row] == 3:
+        elif level[col][row] == 9.0 or level[col][row] == 3.0:
             # If we are in a safe spot or didn't move
             reward = -1.0
         return reward
@@ -285,11 +196,13 @@ class Agent(AbstractPlayer):
 
     def result(self, sso, elapsedTimer):
         self.gameOver = True
-        # if self.lastActionIndex is not None:
-        #     reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
-        #     if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
-        #         reward = -1.0
-        #     self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
+        if self.lastActionIndex is not None:
+            reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
+            if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
+                reward = -1.0
+            # self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
+                self.dqn.remember(np.array([self.buildNetworkInput(self.lastState)]), self.lastActionIndex, reward, np.array(
+                    [self.buildNetworkInput(sso)]), sso.isGameOver)
         self.episode += 1
 
         if self.gameOver:
@@ -300,6 +213,7 @@ class Agent(AbstractPlayer):
                 self.episode, self.steps, self.averageLoss, self.dqn.epsilon))
             print("Winner: {}".format(sso.gameWinner))
             if self.episode % 10 == 0:
+                print("Model Saved!")
                 self.dqn.save(STORE_PATH + "/network/zelda-ddqn.h5")
             with train_writer.as_default():
                 tf.summary.scalar('reward', self.cnt, step=self.steps)
