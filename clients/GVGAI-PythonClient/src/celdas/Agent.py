@@ -29,7 +29,7 @@ BATCH_SIZE = 32
 GAMMA = 0.95
 TAU = 0.08
 ALPHA=0.001
-state_size = 124
+state_size = 117
 STORE_PATH = os.getcwd()
 train_writer = tf.summary.create_file_writer(
     STORE_PATH + "/logs/Zelda_{}".format(dt.datetime.now().strftime('%d%m%Y%H%M')))
@@ -64,6 +64,12 @@ class Agent(AbstractPlayer):
         self.policyNetwork.compile(optimizer=keras.optimizers.Adam(learning_rate=ALPHA),
                                    loss=keras.losses.mean_squared_error)
         print(self.policyNetwork.summary())
+        try:
+            self.policyNetwork.load_weights("./network/zelda-ddqn.h5")
+            self.movementStrategy.epsilon = 0.01
+            print('Model loaded')
+        except:
+            print('Model file not found')
        
     """
     * Public method to be called at the start of every level of a game.
@@ -77,6 +83,7 @@ class Agent(AbstractPlayer):
         self.lastPosition = None
         self.lastActionIndex = None
         self.averageLoss = 0
+        self.averageReward = 0
         self.gameOver = False
         self.cnt = 0
         self.steps = 0
@@ -114,7 +121,7 @@ class Agent(AbstractPlayer):
             # Train
             loss = self.train(self.policyNetwork, self.replayMemory, self.targetNetwork)
             self.averageLoss += loss
-            self.cnt += reward
+            self.averageReward += reward
 
         index = self.getNextAction(sso, self.policyNetwork)
         action = sso.availableActions[index]
@@ -136,17 +143,17 @@ class Agent(AbstractPlayer):
         perception = np.append(perception, np.ravel(self.get_perception(state)))
         # perception = np.append(perception, state.gameScore)
         # perception = np.append(perception, 0.0 if state.isGameOver else 1.0)
-        perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
-        perception = np.append(perception, 0.0 if not self.closerToExit else 1.0)
-        perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
+        # perception = np.append(perception, 0.0 if not self.gotTheKey else 1.0)
+        # perception = np.append(perception, 0.0 if not self.closerToExit else 1.0)
+        # perception = np.append(perception, 0.0 if not self.closerToKey else 1.0)
         # perception = np.append(perception, actionToFloat[state.avatarLastAction])
-        perception = np.append(perception, np.ravel(state.avatarOrientation))
+        # perception = np.append(perception, np.ravel(state.avatarOrientation))
         # perception = np.append(perception, len(state.NPCPositions)) # number of enemies
         # perception = np.append(perception, np.ravel([i.getPositionAsArray() for i in np.ravel(state.portalsPositions)]))
         # perception = np.append(perception, np.ravel(
             # [i.getPositionAsArray() for i in np.ravel(state.NPCPositions)]))
-        perception = np.append(perception, self.getDistanceToKey(state))
-        perception = np.append(perception, self.getDistanceToExit(state))
+        # perception = np.append(perception, self.getDistanceToKey(state))
+        # perception = np.append(perception, self.getDistanceToExit(state))
         # perception = np.append(perception, np.ravel(
         #     [i.getPositionAsArray() for i in np.ravel(state.resourcesPositions)]))
         return perception
@@ -160,9 +167,11 @@ class Agent(AbstractPlayer):
         states = tf.convert_to_tensor(rawStates, dtype=tf.float32)
         actions = np.array([val.actionIndex for val in batch])
         rewards = np.array([val.reward for val in batch])
-        rawNextStates = [(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]
-        preTensorNextStates = [self.buildNetworkInput(val.state) for vcal in rawNextStates]
-        nextStates = tf.convert_to_tensor(preTensorNextStates, dtype=tf.float32)
+        rawNextStates = [
+            (np.zeros(state_size) if val.nextState is None else self.buildNetworkInput(val.nextState)) for val in batch]
+        # rawNextStates = [(np.zeros(state_size) if val.nextState is None else val.nextState) for val in batch]
+        # preTensorNextStates = [self.buildNetworkInput(val.nextState) for val in rawNextStates]
+        nextStates = tf.convert_to_tensor(rawNextStates, dtype=tf.float32)
         # predict Q(s,a) given the batch of states
         prim_qt = policyNetwork(states)
         # predict Q(s',a') from the evaluation network
@@ -202,7 +211,7 @@ class Agent(AbstractPlayer):
 
     def getAvatarCoordinates(self, state):
         position = state.avatarPosition
-        return [float(position[1]), float(position[0])]
+        return [float(position[1]/10), float(position[0]/10)]
 
     def getDistanceToKey(self, state):
         distToKey = distance.cityblock(
@@ -229,30 +238,32 @@ class Agent(AbstractPlayer):
         col = int(currentPosition[0]) # col
         row = int(currentPosition[1]) # row
         reward = 0.0
-        if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
-            print('KILLED AN ENEMY')
-            reward = 5.0
-        elif self.isCloserToKey(lastState, currentState):
-            reward = 2.0
-        elif not self.isCloserToKey(lastState, currentState):
-            reward = -2.0
-        elif self.gotTheKey and self.isCloserToExit(lastState, currentState):
-            reward = 100.0
-        elif level[col][row] == 2:
+        # if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
+        #     print('KILLED AN ENEMY')
+        #     reward += 1.0
+        # if self.isCloserToKey(lastState, currentState):
+        #     reward += 3.0
+        # if not self.isCloserToKey(lastState, currentState):
+        #     reward += -1.0
+        if self.gotTheKey and self.isCloserToExit(lastState, currentState):
+            print('Got the key and closer!')
+            reward += 2.0
+        if level[col][row] == 2:
             # If we got the key
             print('GOT THE KEY')
             self.gotTheKey = True
-            reward = 100.0
+            reward += 5000.0
         elif level[col][row] == 6 and self.gotTheKey:
             # If we are at the exit
             print('WON')
-            reward = 200.0
-        elif level[col][row] == 5:
-            # If we touched an enemy
-            reward = -50.0
+            reward += 10000.0
+        # elif level[col][row] == 5:
+        #     # If we touched an enemy
+        #     print('Dead')
+        #     reward += -10.0
         elif level[col][row] == 9 or level[col][row] == 3:
             # If we are in a safe spot or didn't move
-            reward = -1.0
+            reward += -5.0
         return reward
 
     """
@@ -272,20 +283,26 @@ class Agent(AbstractPlayer):
         self.gameOver = True
         if self.lastActionIndex is not None:
             reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso), sso)
-            if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
-                reward = -1.0
+            # if not sso.isAvatarAlive or sso.gameWinner == 'PLAYER_LOSES':
+            #     reward += -10.0
+            #     print('Dead')
+            if sso.gameWinner == 'PLAYER_WINS':
+                reward += 10000.0
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastActionIndex, reward, sso))
         self.episode += 1
 
         if self.gameOver:
             self.averageLoss /= self.steps
             print("Episode: {}, Reward: {}, avg loss: {}, eps: {}".format(
-                self.episode, self.steps, self.averageLoss, self.movementStrategy.epsilon))
+                self.episode, self.averageReward, self.averageLoss, self.movementStrategy.epsilon))
             print("Winner: {}".format(sso.gameWinner))
             with train_writer.as_default():
-                tf.summary.scalar('reward', self.cnt, step=self.steps)
+                tf.summary.scalar('reward', self.averageReward, step=self.steps)
                 tf.summary.scalar(
                     'avg loss', self.averageLoss, step=self.steps)
+        if self.episode % 10 == 0:
+            self.policyNetwork.save_weights("./network/zelda-ddqn.h5")
+            print('Model saved!')
         return random.randint(0, 2)
 
     def get_perception(self, sso):

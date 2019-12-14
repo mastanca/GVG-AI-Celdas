@@ -126,7 +126,7 @@ public class JavaServer {
         String game = gamesPath + games[gameIdx] + ".txt";
         String[] level_files = new String[5];
         for (int i = 0; i <= 4; i++){
-            level_files[i] = gamesPath + games[gameIdx] + "_lvl" + i +".txt";
+            level_files[i] = gamesPath + games[gameIdx] + "_lvl" + 1 +".txt";
         }
         // This plays a training round for a specified game.
         System.out.println("[GAME] Game idx:" + gameIdx + " game name " + games[gameIdx]);

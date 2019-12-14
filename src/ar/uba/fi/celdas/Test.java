@@ -56,7 +56,7 @@ public class Test {
         int gameIdx = 80;
         int levelIdx = 0; //level names from 0 to 4 (game_lvlN.txt).
         String game = gamesPath + games[gameIdx] + ".txt";
-        String level1 = gamesPath + games[gameIdx] + "_lvl" +levelIdx +".txt";
+        String level1 = gamesPath + games[gameIdx] + "_lvl" +0 +".txt";
        // String level1 = gamesPath + games[gameIdx] + "_lvl_easy_" +levelIdx +".txt";
         
         String recordLevelFile = generateLevelPath + games[gameIdx] + "_glvl.txt";

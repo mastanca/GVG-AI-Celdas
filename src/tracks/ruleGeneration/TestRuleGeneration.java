@@ -53,7 +53,7 @@ public class TestRuleGeneration {
         int gameIdx = 0;
         int levelIdx = 0; // level names from 0 to 4 (game_lvlN.txt).
         String game = generateRulePath + games[gameIdx] + ".txt";
-        String level1 = gamesPath + games[gameIdx] + "_lvl" + levelIdx + ".txt";
+        String level1 = gamesPath + games[gameIdx] + "_lvl" + 0 + ".txt";
         String recordGameFile = generateRulePath + games[gameIdx] + "_ggame.txt";
 
         // 1. Generate rules (Interaction and Terminations) for a fixed level
