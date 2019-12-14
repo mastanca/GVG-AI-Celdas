@@ -63,3 +63,4 @@ src/META-INF/MANIFEST.MF
 src/rs/META-INF/MANIFEST.MF
 
 .vscode/
+logs/
