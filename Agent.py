@@ -145,7 +145,7 @@ class Agent():
             # If we got the key
             print('GOT THE KEY')
             self.gotTheKey = True
-            reward += 5000.0
+            reward += 100.0
         elif level[col][row] == 3. and self.gotTheKey:
             # If we are at the exit
             print('WON')

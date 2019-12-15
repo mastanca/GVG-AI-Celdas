@@ -11,7 +11,7 @@ tf.compat.v1.enable_v2_behavior()
 
 num_episodes = 100  # @param {type:"integer"}
 num_steps = 1000  # @param {type:"integer"}
-render = False  # @param {type:"boolean"}
+render = True  # @param {type:"boolean"}
 
 STORE_PATH = os.getcwd()
 
